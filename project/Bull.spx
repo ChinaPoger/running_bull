@@ -1,0 +1,95 @@
+// 大角牛：跑步动画、跳跃、滑铲、平滑换道
+
+var (
+	vy       float64 // 竖直速度
+	slideT   int     // 滑铲剩余帧数
+	groundY  float64 // 当前（平滑后的）地面 y
+	curScale float64 // 当前（平滑后的）缩放
+	runFrame float64 // 跑步动画帧计数
+)
+
+func reset() {
+	vy = 0
+	slideT = 0
+	runFrame = 0
+	say ""
+	clearGraphicEffects
+}
+
+func doJump() {
+	if jumpH <= 0 {
+		vy = 9
+		jumpH = 0.1
+		slideT = 0
+		sliding = false
+	}
+}
+
+func doSlide() {
+	if jumpH > 0 {
+		vy = -14 // 空中按下：快速落地
+	}
+	slideT = 36
+	sliding = true
+}
+
+func crash() {
+	vy = 0
+	slideT = 0
+	sliding = false
+	setCostume "jump"
+	say "哎呀！"
+}
+
+onStart => {
+	groundY = laneY(1)
+	curScale = laneScale(1)
+	setXYpos bullX, groundY
+	show
+	for {
+		if state == 1 {
+			// 跳跃物理
+			if jumpH > 0 {
+				jumpH += vy
+				vy -= 0.6
+				if jumpH <= 0 {
+					jumpH = 0
+					vy = 0
+				}
+			}
+			// 滑铲计时
+			if slideT > 0 {
+				slideT--
+				sliding = slideT > 0 && jumpH <= 0
+			} else {
+				sliding = false
+			}
+		}
+		if state != 2 {
+			// 平滑换道（近大远小）
+			groundY += (laneY(bullLane) - groundY) * 0.35
+			curScale += (laneScale(bullLane) - curScale) * 0.35
+			setXYpos bullX, groundY+jumpH
+			setSize curScale
+			// 造型
+			if jumpH > 0 {
+				setCostume "jump"
+			} else if sliding {
+				setCostume "slide"
+			} else {
+				runFrame += 0.12 + curSpeed*0.02
+				if runFrame >= 4 {
+					runFrame -= 4
+				}
+				setCostume int(runFrame)
+			}
+			// 冲刺时闪闪发光
+			if boostTime > 0 {
+				setGraphicEffect BrightnessEffect, 20+20*float64(int(boostTime/6)%2)
+			} else {
+				clearGraphicEffects
+			}
+		}
+		waitNextFrame
+	}
+}

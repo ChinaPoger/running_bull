@@ -1,0 +1,86 @@
+{
+  "heading": 90,
+  "x": -150,
+  "y": -112,
+  "size": 0.93,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": true,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 67.0,
+      "y": 144,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "run1",
+      "path": "run1.png",
+      "builder_id": "E6OBmZgwtgsrWYZaQs2E2",
+      "imageWidth": 134,
+      "imageHeight": 144
+    },
+    {
+      "x": 66.5,
+      "y": 144,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "run2",
+      "path": "run2.png",
+      "builder_id": "zPXzTgRoYLuoVZl5HUVAn",
+      "imageWidth": 133,
+      "imageHeight": 144
+    },
+    {
+      "x": 67.5,
+      "y": 144,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "run3",
+      "path": "run3.png",
+      "builder_id": "cvngXpCNIRo2Y2sZyysqo",
+      "imageWidth": 135,
+      "imageHeight": 144
+    },
+    {
+      "x": 68.5,
+      "y": 144,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "run4",
+      "path": "run4.png",
+      "builder_id": "hbDXzLlsXlMrxAHHr5tAd",
+      "imageWidth": 137,
+      "imageHeight": 144
+    },
+    {
+      "x": 68.5,
+      "y": 148,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "jump",
+      "path": "jump.png",
+      "builder_id": "HGlKp6qIAMBRAvggZDqlB",
+      "imageWidth": 137,
+      "imageHeight": 148
+    },
+    {
+      "x": 86.0,
+      "y": 88,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "slide",
+      "path": "slide.png",
+      "builder_id": "iA7Mxf0zIQQeU2wpBdWrE",
+      "imageWidth": 172,
+      "imageHeight": 88
+    }
+  ],
+  "builder_id": "FTCEiBtaP81AwYxxzAre8"
+}

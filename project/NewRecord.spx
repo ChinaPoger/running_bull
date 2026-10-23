@@ -1,0 +1,28 @@
+// “新纪录！”徽章：游戏结束时如果刷新了最高分就弹出来
+
+var (
+	t float64
+)
+
+func pop() {
+	t = 0
+	setXYpos 0, -75
+	setSize 0.3
+	show
+	setLayer Front
+}
+
+onStart => {
+	hide
+	for {
+		if visible {
+			t++
+			s := 1.0 + 0.06*float64(int(t/10)%2)
+			if t < 12 {
+				s = 0.3 + t*0.06
+			}
+			setSize s
+		}
+		waitNextFrame
+	}
+}

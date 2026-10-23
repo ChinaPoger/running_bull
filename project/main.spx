@@ -1,0 +1,286 @@
+// 大角牛快跑 —— 舞台（全局状态、计分、生成障碍、键盘与触屏控制）
+
+var (
+	state      int     // 0 = 标题，1 = 游戏中，2 = 游戏结束
+	score      int     // 分数（monitor 显示）
+	coins      int     // 金币（monitor 显示）
+	best       int     // 最高分（monitor 显示，本次会话内保留）
+	boostLeft  int     // 冲刺剩余秒数（monitor 显示）
+	newRecord  bool    // 本局是否刷新纪录
+	bullLane   int     // 大角牛所在跑道：0 = 远（上），1 = 中，2 = 近（下）
+	bullX      float64 // 大角牛的 x 坐标（固定）
+	jumpH      float64 // 大角牛离地高度（> 0 表示在空中）
+	sliding    bool    // 是否在滑铲
+	speed      float64 // 基础速度（像素/帧），随时间变快
+	curSpeed   float64 // 当前实际滚动速度（冲刺时更快）
+	boostTime  float64 // 冲刺剩余帧数
+	dist       float64 // 跑过的距离（换算成分数）
+	frames     float64 // 本局已进行的帧数
+	spawnGap   float64 // 距离下一排障碍还要跑多远
+	overFrames int     // 游戏结束后经过的帧数（防止误触立刻重开）
+	ptrDown    bool    // 鼠标 / 手指是否按下
+	ptrSwiped  bool    // 这次按下是否已经算作一次滑动
+	ptrX       float64 // 按下时的位置
+	ptrY       float64
+)
+
+// 跑道 l 的地面 y 坐标（脚底位置）
+func laneY(l int) float64 {
+	return -62 - 50*float64(l)
+}
+
+// 跑道 l 上物体的缩放：近大远小
+func laneScale(l int) float64 {
+	return 0.86 + 0.07*float64(l)
+}
+
+func absf(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func startGame() {
+	score = 0
+	coins = 0
+	dist = 0
+	frames = 0
+	boostTime = 0
+	boostLeft = 0
+	newRecord = false
+	bullLane = 1
+	jumpH = 0
+	sliding = false
+	speed = 4.5
+	curSpeed = speed
+	spawnGap = 200
+	hideVar "boostLeft"
+	Panel.hide
+	NewRecord.hide
+	Bull.reset
+	state = 1
+}
+
+func gameOver() {
+	if state != 1 {
+		return
+	}
+	state = 2
+	overFrames = 0
+	curSpeed = 0
+	boostTime = 0
+	hideVar "boostLeft"
+	if score > best {
+		best = score
+		newRecord = true
+	}
+	Bull.crash
+	Panel.showOver
+	if newRecord {
+		NewRecord.pop
+	}
+}
+
+func startBoost() {
+	boostTime = 300 // 约 5 秒（60 帧/秒）
+	boostLeft = 5
+	showVar "boostLeft"
+}
+
+func addCoin() {
+	coins++
+}
+
+// 点击 / 空格：开始或重新开始
+func tap() {
+	if state == 0 {
+		startGame()
+	} else if state == 2 && overFrames > 40 {
+		startGame()
+	}
+}
+
+func doJump() {
+	if state == 1 {
+		Bull.doJump
+	} else {
+		tap()
+	}
+}
+
+func doSlide() {
+	if state == 1 {
+		Bull.doSlide
+	}
+}
+
+func changeLane(d int) {
+	if state != 1 {
+		return
+	}
+	l := bullLane + d
+	if l >= 0 && l <= 2 {
+		bullLane = l
+	}
+}
+
+// 触屏 / 鼠标：自己检测“点一下”和“滑动”。
+//   上滑 / 下滑：换到上面（远）/ 下面（近）的跑道
+//   点右半屏：跳跃；点左半屏：滑铲；不在游戏中时点哪里都是开始 / 重新开始
+// （没有用 onSwipe：本地实测 spx v3.3.0 的上下滑动方向是反的，所以直接读 mouseX / mouseY 判断）
+func pollPointer() {
+	if mousePressed {
+		if !ptrDown {
+			ptrDown = true
+			ptrSwiped = false
+			ptrX = mouseX
+			ptrY = mouseY
+		} else if !ptrSwiped {
+			dx := mouseX - ptrX
+			dy := mouseY - ptrY
+			if absf(dy) > 25 && absf(dy) >= absf(dx) {
+				ptrSwiped = true
+				if dy > 0 {
+					changeLane(-1) // 向上滑：换到上面（远）一道
+				} else {
+					changeLane(1) // 向下滑：换到下面（近）一道
+				}
+			} else if absf(dx) > 25 {
+				ptrSwiped = true // 左右滑动不做任何事
+			}
+		}
+	} else {
+		if ptrDown && !ptrSwiped {
+			if state != 1 {
+				tap() // 开始 / 重新开始
+			} else if ptrX >= 0 {
+				doJump() // 点右半屏：跳
+			} else {
+				doSlide() // 点左半屏：滑铲
+			}
+		}
+		ptrDown = false
+	}
+}
+
+// 生成一个障碍物：低栏 / 高栏要同时生成后层和前层两个克隆
+func spawnObstacle(l int, k int) {
+	Obstacle.clone l + 10*k
+	if k == 0 || k == 2 {
+		Obstacle.clone l + 10*k + 100
+	}
+}
+
+// 按躲法随机挑一种障碍：0 = 跳（低栏 / 石堆），1 = 滑铲（高栏），2 = 换道（草垛 / 木箱）
+func pickKind(cat int) int {
+	if cat == 0 {
+		return int(rand(0, 1))
+	} else if cat == 1 {
+		return 2
+	}
+	return 3 + int(rand(0, 1))
+}
+
+// 生成一排障碍物（以及金币 / 冲刺道具）
+func spawnRow() {
+	n := 1
+	if frames > 900 && rand(1, 100) <= 45 {
+		n = 2
+	}
+	l1 := int(rand(0, 2))
+	c1 := int(rand(0, 2))
+	spawnObstacle(l1, pickKind(c1))
+	used2 := -1
+	if n == 2 {
+		l2 := (l1 + 1 + int(rand(0, 1))) % 3
+		c2 := int(rand(0, 2))
+		if c1 == 2 && c2 == 2 {
+			c2 = int(rand(0, 1)) // 至少留一条能跳 / 滑过去的路
+		}
+		spawnObstacle(l2, pickKind(c2))
+		used2 = l2
+	}
+	free := 0
+	for free == l1 || free == used2 {
+		free++
+	}
+	r := rand(1, 100)
+	if r <= 8 && boostTime == 0 {
+		Boost.clone free
+	} else if r <= 70 {
+		for i := 0; i < 5; i++ {
+			Coin.clone i*10 + free
+		}
+	}
+}
+
+onStart => {
+	state = 0
+	best = 0
+	bullX = -150
+	bullLane = 1
+	curSpeed = 2
+	hideVar "boostLeft"
+	Panel.showTitle
+	for {
+		if state == 1 {
+			frames++
+			speed = 4.5 + frames*0.0025
+			if speed > 11 {
+				speed = 11
+			}
+			if boostTime > 0 {
+				boostTime--
+				curSpeed = speed * 1.6
+				boostLeft = int(boostTime/60) + 1
+				if boostTime <= 0 {
+					boostLeft = 0
+					hideVar "boostLeft"
+				}
+			} else {
+				curSpeed = speed
+			}
+			dist += curSpeed / 20
+			score = int(dist) + coins*10
+			spawnGap -= curSpeed
+			if spawnGap <= 0 {
+				spawnRow()
+				gap := rand(230.0, 360.0) - frames*0.02
+				if gap < 170 {
+					gap = 170
+				}
+				spawnGap = gap
+			}
+		} else if state == 0 {
+			curSpeed = 2
+		} else {
+			curSpeed = 0
+			overFrames++
+		}
+		pollPointer()
+		waitNextFrame
+	}
+}
+
+// 键盘：J 跳跃，K 滑铲，↑/W 换到上面（远）一道，↓/S 换到下面（近）一道
+// 空格：游戏中也能跳；空格 / 回车：开始 / 重新开始
+onKey [KeyJ, KeySpace], => {
+	doJump()
+}
+
+onKey KeyK, => {
+	doSlide()
+}
+
+onKey [KeyUp, KeyW], => {
+	changeLane(-1)
+}
+
+onKey [KeyDown, KeyS], => {
+	changeLane(1)
+}
+
+onKey KeyEnter, => {
+	tap()
+}

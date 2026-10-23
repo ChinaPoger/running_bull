@@ -1,0 +1,64 @@
+// 金币：同一跑道碰到就收集；冲刺时有磁铁效果，附近金币自动飞过来
+
+var (
+	myLane  int
+	inFront bool
+	px      float64 // 逻辑坐标（不受舞台边界限制）
+	py      float64
+)
+
+func updateDepth() {
+	want := myLane > bullLane
+	if want != inFront {
+		inFront = want
+		if want {
+			setLayer Front
+		} else {
+			setLayer Back
+			setLayer Forward, 2
+		}
+	}
+}
+
+onCloned data => {
+	code := data.(int)
+	myLane = code % 10
+	px = 262 + 30*float64(code/10)
+	py = laneY(myLane) + 14
+	setXYpos px, py
+	setSize laneScale(myLane)
+	inFront = false
+	updateDepth
+	for state == 1 {
+		dx := px - bullX
+		if boostTime > 0 && dx < 150 && dx > -40 {
+			// 磁铁：吸向大角牛
+			ty := Bull.ypos + 30
+			px += (bullX - px) * 0.25
+			py += (ty - py) * 0.25
+			if absf(px-bullX) < 18 && absf(py-ty) < 25 {
+				addCoin()
+				deleteThisClone
+			}
+		} else {
+			px -= curSpeed
+			if myLane == bullLane && absf(px-bullX) < 24 && jumpH < 70 {
+				addCoin()
+				deleteThisClone
+			}
+		}
+		setXYpos px, py
+		if px < 252 && !visible {
+			show
+		}
+		if px < -238 {
+			deleteThisClone
+		}
+		updateDepth
+		waitNextFrame
+	}
+	for state == 2 {
+		waitNextFrame
+	}
+	deleteThisClone
+}

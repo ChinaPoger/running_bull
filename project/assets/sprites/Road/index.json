@@ -1,0 +1,31 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": -91.5,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": true,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 960.0,
+      "y": 177.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "road",
+      "path": "road.png",
+      "builder_id": "Y7dWWm38fJ5yYkAUxKPXz",
+      "imageWidth": 1920,
+      "imageHeight": 354
+    }
+  ],
+  "builder_id": "HMA5ojirEiOLNfTBGdpoY"
+}

@@ -1,0 +1,54 @@
+// 加速道具（闪电）：吃到后冲刺约 5 秒——速度更快、无敌撞飞路障、磁铁吸金币
+
+var (
+	myLane  int
+	inFront bool
+	bobT    float64
+	px      float64 // 逻辑 x 坐标
+)
+
+func updateDepth() {
+	want := myLane > bullLane
+	if want != inFront {
+		inFront = want
+		if want {
+			setLayer Front
+		} else {
+			setLayer Back
+			setLayer Forward, 2
+		}
+	}
+}
+
+onCloned data => {
+	myLane = data.(int)
+	bobT = 0
+	px = 262
+	setXYpos px, laneY(myLane)+20
+	setSize laneScale(myLane)
+	inFront = false
+	updateDepth
+	for state == 1 {
+		px -= curSpeed
+		setXpos px
+		if px < 258 && !visible {
+			show
+		}
+		bobT++
+		setYpos laneY(myLane) + 20 + 6*float64(int(bobT/8)%2)
+		if myLane == bullLane && absf(px-bullX) < 26 && jumpH < 70 {
+			startBoost()
+			Bull.say "冲呀！", 0.8
+			deleteThisClone
+		}
+		if px < -240 {
+			deleteThisClone
+		}
+		updateDepth
+		waitNextFrame
+	}
+	for state == 2 {
+		waitNextFrame
+	}
+	deleteThisClone
+}

@@ -1,0 +1,35 @@
+// 滚动路面：两张 960 宽的无缝路面首尾相接，循环滚动
+
+var (
+	px float64 // 逻辑 x 坐标（spx 会把角色限制在舞台内，所以自己记录）
+)
+
+func scroll() {
+	for {
+		px -= curSpeed
+		if px <= -960 {
+			px += 1920
+		}
+		setXpos px
+		// 完全在画面外的那一张先藏起来，避免被舞台边界“卡”在边上露出一条
+		if px < -712 || px > 712 {
+			hide
+		} else {
+			show
+		}
+		waitNextFrame
+	}
+}
+
+onStart => {
+	px = 0
+	setXYpos 0, -91.5
+	clone
+	scroll
+}
+
+onCloned => {
+	px = 960
+	setXYpos 960, -91.5
+	scroll
+}

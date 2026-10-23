@@ -1,0 +1,97 @@
+{
+  "heading": 90,
+  "x": 60,
+  "y": -112,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 90,
+      "y": 220,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "hurdle_back",
+      "path": "hurdle_back.png",
+      "builder_id": "2cZ1Ml4tVTZloHdOmJdCL",
+      "imageWidth": 180,
+      "imageHeight": 280
+    },
+    {
+      "x": 90,
+      "y": 220,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "hurdle_front",
+      "path": "hurdle_front.png",
+      "builder_id": "H99CvfTX7gd8QT0j3RLhL",
+      "imageWidth": 180,
+      "imageHeight": 280
+    },
+    {
+      "x": 47.5,
+      "y": 84,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "rocks",
+      "path": "rocks.png",
+      "builder_id": "laFeVHE634kGX0XZpnrfc",
+      "imageWidth": 95,
+      "imageHeight": 94
+    },
+    {
+      "x": 90,
+      "y": 220,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "gate_back",
+      "path": "gate_back.png",
+      "builder_id": "QM20pIfABAkjB3U4ng1UG",
+      "imageWidth": 180,
+      "imageHeight": 280
+    },
+    {
+      "x": 90,
+      "y": 220,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "gate_front",
+      "path": "gate_front.png",
+      "builder_id": "xqbAlQCzYRC8GqlhDQs0Y",
+      "imageWidth": 180,
+      "imageHeight": 280
+    },
+    {
+      "x": 82.5,
+      "y": 160,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "hay",
+      "path": "hay.png",
+      "builder_id": "vkjznMbwqP2BILmPjCAaz",
+      "imageWidth": 165,
+      "imageHeight": 170
+    },
+    {
+      "x": 69.5,
+      "y": 124,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "crate",
+      "path": "crate.png",
+      "builder_id": "5FWqS0UW13SlKKby36dyp",
+      "imageWidth": 139,
+      "imageHeight": 134
+    }
+  ],
+  "builder_id": "GapqcBBRNNlD8GFqZSALE"
+}

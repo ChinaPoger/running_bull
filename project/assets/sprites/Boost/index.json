@@ -1,0 +1,31 @@
+{
+  "heading": 90,
+  "x": 160,
+  "y": -40,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 35.0,
+      "y": 36.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "boost",
+      "path": "boost.png",
+      "builder_id": "EY5zIA48KOtwJQlFhK5ux",
+      "imageWidth": 70,
+      "imageHeight": 72
+    }
+  ],
+  "builder_id": "wdoCan7KuQaXn5H5WtOjL"
+}

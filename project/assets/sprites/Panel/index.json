@@ -1,0 +1,42 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 62,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 330.0,
+      "y": 197.5,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "title",
+      "path": "title.png",
+      "builder_id": "b9ErySqoK0ACUIuXIVHhg",
+      "imageWidth": 660,
+      "imageHeight": 395
+    },
+    {
+      "x": 330.0,
+      "y": 197.5,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "over",
+      "path": "over.png",
+      "builder_id": "bh6fI750Foa5MZSA3OHXc",
+      "imageWidth": 660,
+      "imageHeight": 395
+    }
+  ],
+  "builder_id": "DMz3O6qX5mDwIy2mbbhRX"
+}

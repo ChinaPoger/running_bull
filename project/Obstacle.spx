@@ -1,0 +1,137 @@
+// 路障：克隆体从右往左移动。
+// 种类 kind：0 = 低栏，1 = 石堆（这两种要跳过），2 = 高栏（要滑铲钻过），3 = 草垛，4 = 木箱（这两种要换道躲开）
+// 低栏和高栏有纵深：分成 back（远侧的腿/杆 + 横杆/影子）和 front（近侧的腿/杆）两个克隆，
+// 大角牛画在两层之间，看起来就是从栏上跳过 / 从横梁下钻过。
+
+var (
+	myLane  int
+	kind    int
+	part    int     // 0 = 后层（或单层障碍），1 = 前层
+	inFront bool
+	hitDone bool
+	px      float64 // 逻辑 x 坐标（spx 会把角色限制在舞台内，所以自己记录真实位置）
+	halfW   float64 // 造型的一半宽度（用来判断是否完全移出画面）
+)
+
+// 种类 → 躲法：0 = 跳，1 = 滑铲，2 = 换道
+func category() int {
+	if kind <= 1 {
+		return 0
+	} else if kind == 2 {
+		return 1
+	}
+	return 2
+}
+
+// 图层：后层只有在大角牛后面（更远）的跑道时才挡在牛前面；
+// 前层在牛所在跑道或更近的跑道时都挡在牛前面
+func updateDepth() {
+	want := myLane > bullLane
+	if part == 1 {
+		want = myLane >= bullLane
+	}
+	if want {
+		if part == 1 || !inFront {
+			setLayer Front // 前层每帧都提到最前，保证压在同一障碍的后层之上
+		}
+	} else if inFront {
+		setLayer Back
+		setLayer Forward, 2 // 放回两张滚动路面（Road 及其克隆）之上、大角牛之下
+	}
+	inFront = want
+}
+
+func hitWidth() float64 {
+	if category() == 0 {
+		return 24
+	} else if category() == 1 {
+		return 34
+	}
+	return 36
+}
+
+func smash() {
+	// 冲刺状态撞飞障碍
+	hitDone = true
+	if part == 0 {
+		dist += 20
+	}
+	for i := 0; i < 15; i++ {
+		changeXYpos 10, 9
+		turn 24
+		changeGraphicEffect GhostEffect, 7
+		waitNextFrame
+	}
+	deleteThisClone
+}
+
+onCloned data => {
+	code := data.(int)
+	myLane = code % 10
+	kind = (code / 10) % 10
+	part = code / 100
+	if kind == 0 {
+		if part == 0 {
+			setCostume "hurdle_back"
+		} else {
+			setCostume "hurdle_front"
+		}
+		halfW = 45
+	} else if kind == 1 {
+		setCostume "rocks"
+		halfW = 24
+	} else if kind == 2 {
+		if part == 0 {
+			setCostume "gate_back"
+		} else {
+			setCostume "gate_front"
+		}
+		halfW = 45
+	} else if kind == 3 {
+		setCostume "hay"
+		halfW = 41
+	} else {
+		setCostume "crate"
+		halfW = 35
+	}
+	halfW = halfW * laneScale(myLane)
+	setHeading 90
+	px = 240 + halfW + 10
+	setXYpos px, laneY(myLane)
+	setSize laneScale(myLane)
+	inFront = false
+	hitDone = false
+	updateDepth
+	for state == 1 {
+		px -= curSpeed
+		setXpos px
+		if px < 240+halfW && !visible {
+			show
+		}
+		updateDepth
+		if !hitDone && myLane == bullLane && absf(px-bullX) < hitWidth() {
+			blocked := true
+			if category() == 0 {
+				blocked = jumpH < 28
+			} else if category() == 1 {
+				blocked = !sliding
+			}
+			if blocked {
+				if boostTime > 0 {
+					smash
+				} else if part == 0 {
+					hitDone = true
+					gameOver()
+				}
+			}
+		}
+		if px < -225-halfW {
+			deleteThisClone // 完全移出左边，删除克隆
+		}
+		waitNextFrame
+	}
+	for state == 2 {
+		waitNextFrame
+	}
+	deleteThisClone
+}
