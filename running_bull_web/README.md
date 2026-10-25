@@ -21,6 +21,7 @@ PUBLIC_URL=http://127.0.0.1:3000 python3 server.py
 - 手机试玩：手机和电脑连同一个 Wi-Fi。横版打开 `http://电脑的局域网IP:3000`（建议横屏）。竖屏三道跑酷打开 `http://电脑的局域网IP:3000/mobile-web/`（竖屏，不用横过来）
 - 数据存在 `data/running_bull.db`，删掉这个文件就是清空所有数据
 - 接口自测：另开一个终端运行 `python3 tests/smoke_test.py http://127.0.0.1:3000` 和 `python3 tests/account_xb_test.py http://127.0.0.1:3000`（会往库里写几个测试账号；account_xb_test 结束时会删除自己建的账号）
+- 竖屏手工测试用例（商业化 / 操作性 / 趣味性 / 健壮性）：[docs/TEST_CASES.md](docs/TEST_CASES.md)
 
 ## 二、操作
 
