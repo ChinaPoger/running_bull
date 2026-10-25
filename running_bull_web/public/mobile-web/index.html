@@ -9,7 +9,7 @@
   <meta name="description" content="大角牛快跑 · 勇敢牛牛，不怕困难 —— 竖屏三道跑酷" />
   <title>大角牛快跑 · 竖屏跑酷</title>
   <link rel="icon" href="../assets/coin.png" />
-  <link rel="stylesheet" href="style.css?v=home2" />
+  <link rel="stylesheet" href="style.css?v=hintcap1" />
 </head>
 <body>
   <div id="app" data-theme="earth">
@@ -35,14 +35,14 @@
           <span id="hud-score">0</span>
         </div>
       </div>
-      <div class="hud-pill invuln-pill" id="hud-invuln-pill" title="无敌冲撞次数">
+      <div class="hud-pill invuln-pill is-idle" id="hud-invuln-pill" title="无敌剩余时间">
         <span class="hud-ico" aria-hidden="true">🛡️</span>
         <div class="hud-block">
           <span class="hud-label" id="hud-label-invuln">无敌</span>
           <span id="hud-invuln">3</span>
         </div>
       </div>
-      <div class="hud-pill boost-pill" id="hud-boost-pill" title="短冲刺加速（键 X）">
+      <div class="hud-pill boost-pill is-idle" id="hud-boost-pill" title="加速剩余时间（键 X）">
         <span class="hud-ico" aria-hidden="true">⚡</span>
         <div class="hud-block">
           <span class="hud-label" id="hud-label-boost">加速</span>
@@ -87,19 +87,17 @@
       </div>
     </div>
 
-    <div id="touch-layer">
-      <button type="button" id="btn-left" class="touch-btn lane" aria-label="向左换道">◀</button>
-      <button type="button" id="btn-jump" class="touch-btn jump" aria-label="起跳">跳</button>
-      <button type="button" id="btn-right" class="touch-btn lane" aria-label="向右换道">▶</button>
-      <button type="button" id="btn-bomb" class="touch-btn bomb" aria-label="丢炸弹">💣</button>
-      <button type="button" id="btn-boost" class="touch-btn boost" aria-label="短冲刺加速">
-        <span class="boost-emoji" aria-hidden="true">⚡</span>
-        <span class="boost-count" id="btn-boost-count">×3</span>
-      </button>
-      <button type="button" id="btn-invuln" class="touch-btn invuln" aria-label="无敌冲撞">
-        <span class="invuln-emoji" aria-hidden="true">🛡️</span>
-        <span class="invuln-count" id="btn-invuln-count">3</span>
-      </button>
+    <div id="ops-hint" class="hidden" role="dialog" aria-modal="true" aria-labelledby="ops-hint-title">
+      <div class="ops-hint-card">
+        <h2 id="ops-hint-title">操作提示</h2>
+        <ul>
+          <li>左右滑：换道</li>
+          <li>上滑，或点屏幕上半部分：跳跃</li>
+          <li>下滑：下蹲。低的障碍可以钻过去；黄黑高栏只能蹲，起跳会撞上</li>
+          <li id="ops-hint-powers">炸弹、无敌、加速在画面下方，用商店里买的次数</li>
+        </ul>
+        <button type="button" id="btn-ops-hint" class="primary">知道了</button>
+      </div>
     </div>
 
     <div id="home" class="show" aria-label="首页">
@@ -266,15 +264,14 @@
         </div>
 
         <ul class="tips">
-          <li>左右按钮或左右滑 = 换道</li>
-          <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
-          <li>下滑 / ↓ = 下蹲。低障可以钻；黄黑高栏只能蹲，起跳会撞上</li>
-          <li>💣 / 植物模式 🍒：免费清当前道（植物模式连续 10 秒）。商店炸弹 300 才清全屏</li>
+          <li>左右滑 = 换道（电脑 ← →）</li>
+          <li>上滑，或点屏幕上半 = 起跳（电脑 ↑ / 空格）</li>
+          <li>下滑 = 下蹲。低障可以钻；黄黑高栏只能蹲，起跳会撞上（电脑 ↓）</li>
+          <li>画面下方是商店道具：炸弹清全屏、无敌 10 秒、短冲刺</li>
           <li>🌲 优美森林：背对四分之三跑 · 神光树影（键6）</li>
           <li>🌻 植物跑酷：捡向日葵/豌豆/加特林/坚果打僵尸</li>
           <li>✈️ 飞机大战：默认扫射；小怪3血/大怪10血；弯道；键0</li>
-          <li>⚡ 短冲刺×3：键 X / 触控 ⚡ · 约 1 秒加速×1.45，冷却 2.5 秒（飞机=后喷）。商店加速 500 再来一次</li>
-          <li>🛡️ 无敌×3：点开后 10 秒撞碎障碍。商店无敌 500 再开 10 秒</li>
+          <li>电脑 B 当前道炸弹（植物樱桃 / 飞机导弹），X 加速，I 无敌。每局自带加速和无敌各 3 次</li>
           <li>📺 撞障看激励广告（示意 2 秒）后继续；跳过两次认栽结算；看完送短护盾/清道</li>
         </ul>
 
@@ -410,7 +407,7 @@
       note: "Display only. Rewarded hit ads stay on window.__RB_REWARDED_AD (mock)."
     };
   </script>
-  <script src="game.js?v=home2"></script>
+  <script src="game.js?v=hintcap1"></script>
   <script src="sync.js?v=home2"></script>
 </body>
 </html>
