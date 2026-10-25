@@ -14,11 +14,11 @@ cd running_bull_web
 PUBLIC_URL=http://127.0.0.1:3000 python3 server.py
 ```
 
-然后浏览器打开 <http://127.0.0.1:3000>。
+然后浏览器打开 <http://127.0.0.1:3000>（横版）。竖屏跑酷打开 <http://127.0.0.1:3000/mobile-web/>。
 
 - 默认端口 3000，换端口：`PORT=9000 python3 server.py`
 - `PUBLIC_URL` 是邀请链接里用的网址，默认 `https://bull.lingecho.com`（线上地址）；本地调试时设成本机地址，邀请链接才能点开
-- 手机试玩：手机和电脑连同一个 Wi-Fi，手机浏览器打开 `http://电脑的局域网IP:3000`（横屏玩）
+- 手机试玩：手机和电脑连同一个 Wi-Fi。横版打开 `http://电脑的局域网IP:3000`（建议横屏）。竖屏三道跑酷打开 `http://电脑的局域网IP:3000/mobile-web/`（竖屏，不用横过来）
 - 数据存在 `data/running_bull.db`，删掉这个文件就是清空所有数据
 - 接口自测：另开一个终端运行 `python3 tests/smoke_test.py http://127.0.0.1:3000` 和 `python3 tests/account_xb_test.py http://127.0.0.1:3000`（会往库里写几个测试账号；account_xb_test 结束时会删除自己建的账号）
 
@@ -60,7 +60,25 @@ PUBLIC_URL=http://127.0.0.1:3000 python3 server.py
 - **账号很简单**：只靠设备号识别，换浏览器或清缓存就是新号；没有手机号 / 微信登录、没有接口签名和限流。
   正式上线前要加真正的登录和鉴权。
 - 防作弊只是按时间封顶，懂行的人仍然可以伪造请求。
-- 没有背景音乐；手机是横屏设计，竖屏会显示得很小。
+- 没有背景音乐。根路径的网页是横屏设计，竖屏会缩得很小；竖屏请打开 `/mobile-web/`（见下一节）。
+
+## 四.1 竖屏手机网页（`/mobile-web/`）
+
+生产环境和本地用的是同一套静态目录：nginx 的 `root` 指向 `public/`，所以竖屏页的线上地址是 <https://bull.lingecho.com/mobile-web/> 。不用改 nginx 的 `location`（`index index.html` 会打开 `public/mobile-web/index.html`）。横版原型仍在 `/`，没有被替换。
+
+```bash
+cd running_bull_web
+python3 server.py
+# 浏览器打开 http://127.0.0.1:3000/mobile-web/
+```
+
+玩法对齐「勇敢牛牛 · 手机跑酷」：竖屏三道、卡片选角色和地图（手机不用键盘）、跳跃 / 滑铲 / 换道 / 捡金币，另有飞机大战。口号是「勇敢牛牛，不怕困难」。撞障广告和抽奖都是本机示意，不加载广告或支付 SDK。
+
+和后台的关系：
+
+- 设备号用横版同一个 `rb_device`，开局 `POST /api/runs`，结算 `POST /api/runs/{id}/finish`，请求体带 `board: "portrait"`。
+- 本局金币计入共用钱包（仍按服务器的每秒上限封顶）。竖屏分数**不**写入全服 `best`，本机得分榜留在 `localStorage`，避免和横版计分互相覆盖。
+- 地址栏 `?invite=` 只在这个设备第一次建号时生效，规则和横版一样。
 
 ## 五、切换到 MySQL（线上用）
 
@@ -141,7 +159,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | POST | `/runs` | `{use_shield?, use_double?}` | `{run_id, shield, double, user}`，开局并扣掉用到的道具 |
 | POST | `/ads` | `{run_id}` | `{ad_id, seconds, mock:true}`，开始看示意广告 |
 | POST | `/runs/{run_id}/revive` | `{method:"ad", ad_id}` 或 `{method:"coins"}` | `{ok, user}`；每局一次 |
-| POST | `/runs/{run_id}/finish` | `{score, coins}` | `{score, earned, capped, new_record, rank, user}` |
+| POST | `/runs/{run_id}/finish` | `{score, coins, board?}` | `{score, earned, capped, new_record, rank, user}`。`board:"portrait"` 时金币照常入账（仍按秒封顶），但不更新全服 `best`；不带该字段时和以前一样 |
 | GET | `/leaderboard` | – | `{top:[{rank, id, nickname, best, equipped_char}]}` 前 20 |
 | GET | `/invite` | – | `{code, link, count, earned, reward_inviter, reward_invitee}`，`link` = `PUBLIC_URL/?invite=邀请码` |
 
@@ -188,7 +206,7 @@ server.py            后端（HTTP 服务 + 接口 + 静态文件）
 db.py                数据库层（SQLite / MySQL 切换）
 schema.mysql.sql     MySQL 表结构
 deploy/              线上部署配置：nginx.conf、running-bull.service、env.example
-public/              前端：index.html、game.js（游戏核心）、ui.js（界面）、api.js、audio.js、style.css、assets/
+public/              前端：index.html（横版）、mobile-web/（竖屏，线上路径 /mobile-web/）、game.js、ui.js、api.js、audio.js、style.css、assets/
 tests/smoke_test.py  接口冒烟测试
 tools/make_assets.py 从 XBuilder 版复制素材并生成换色角色、地图、护盾图标（需要 Pillow + numpy）
 screenshots/         测试截图

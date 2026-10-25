@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a8cff" />
+  <meta name="description" content="大角牛快跑竖屏版介绍 · 勇敢牛牛，不怕困难" />
+  <title>关于 · 大角牛快跑</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .doc-page { max-width: 520px; margin: 0 auto; padding: 24px 18px 48px; color: #1e293b; line-height: 1.65; font-size: 14px; }
+    .doc-page h1 { font-size: 22px; margin: 0 0 8px; }
+    .doc-page h2 { font-size: 16px; margin: 22px 0 8px; color: #0f172a; }
+    .doc-page p, .doc-page li { color: #334155; }
+    .doc-page .meta { color: #64748b; font-size: 12px; margin-bottom: 18px; }
+    .doc-page a { color: #0369a1; }
+    .doc-nav { margin-bottom: 16px; }
+    .doc-nav a { margin-right: 12px; font-weight: 600; text-decoration: none; }
+    .slogan-big { font-size: 18px; font-weight: 700; color: #0369a1; margin: 0 0 12px; }
+    body.doc-body { background: #f1f5f9; min-height: 100vh; overflow: auto; touch-action: pan-y; }
+  </style>
+</head>
+<body class="doc-body">
+  <article class="doc-page">
+    <nav class="doc-nav" aria-label="页面导航">
+      <a href="./">← 返回游戏</a>
+      <a href="privacy.html">隐私政策</a>
+      <a href="../">横版网页</a>
+    </nav>
+    <h1>关于「大角牛快跑 · 竖屏跑酷」</h1>
+    <p class="slogan-big">勇敢牛牛，不怕困难。</p>
+    <p class="meta">竖屏三道跑酷 · 静态页面在 /mobile-web/ · 可在手机浏览器打开</p>
+
+    <h2>这是什么</h2>
+    <p>大角牛快跑的竖屏网页版：选角色（大角牛 / 小鹿 / 小狗），选地图（土路、优美森林、植物跑酷、悬空空间、飞机大战、慢慢跑酷），左右换道、跳跃与滑铲躲障，捡金币。横版原型仍在网站根路径，两种玩法共用同一套 <code>/api</code> 游客钱包。</p>
+
+    <h2>怎么玩</h2>
+    <ul>
+      <li>左右滑或 ◀▶：换道</li>
+      <li>上滑 /「跳」/ 点屏幕上半：起跳</li>
+      <li>下滑：滑铲</li>
+      <li>💣 清当前道；🛡️ 无敌冲撞；⚡ 短冲刺</li>
+      <li>飞机大战：默认扫射，左右换道躲弹、打大小怪</li>
+      <li>撞障时弹出<strong>激励广告示意</strong>（本地约 2 秒占位，不是真实广告）</li>
+    </ul>
+
+    <h2>广告、抽奖和钱包</h2>
+    <ul>
+      <li><strong>展示广告位</strong>默认关闭，页面不加载任何广告脚本，也不需要广告或支付 SDK。</li>
+      <li><strong>激励视频</strong>是本地占位：看完继续跑，连续跳过两次则结算。</li>
+      <li><strong>抽奖 / Top3 红包</strong>是活动<strong>示意 / 非赌博</strong>，只在本机模拟，不会发钱。</li>
+      <li>本局金币在连上服务器时记入和大角牛横版同一个钱包（按服务器的每秒上限封顶）。竖屏得分记在本机排行榜，不覆盖全服最高分。</li>
+    </ul>
+
+    <h2>怎么打开</h2>
+    <p>本地：在 <code>running_bull_web</code> 里运行 <code>python3 server.py</code>，浏览器打开 <code>http://127.0.0.1:3000/mobile-web/</code>。线上路径：<a href="https://bull.lingecho.com/mobile-web/">https://bull.lingecho.com/mobile-web/</a>。</p>
+    <p>代码：<a href="https://github.com/ChinaPoger/running_bull">github.com/ChinaPoger/running_bull</a>。</p>
+
+    <p class="meta"><a href="./">开始试玩</a> · <a href="privacy.html">隐私政策</a></p>
+  </article>
+</body>
+</html>

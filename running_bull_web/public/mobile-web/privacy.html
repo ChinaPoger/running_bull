@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a8cff" />
+  <meta name="description" content="大角牛快跑竖屏版隐私说明" />
+  <title>隐私政策 · 大角牛快跑</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .doc-page { max-width: 520px; margin: 0 auto; padding: 24px 18px 48px; color: #1e293b; line-height: 1.65; font-size: 14px; }
+    .doc-page h1 { font-size: 22px; margin: 0 0 8px; }
+    .doc-page h2 { font-size: 16px; margin: 22px 0 8px; color: #0f172a; }
+    .doc-page p, .doc-page li { color: #334155; }
+    .doc-page .meta { color: #64748b; font-size: 12px; margin-bottom: 18px; }
+    .doc-page a { color: #0369a1; }
+    .doc-nav { margin-bottom: 16px; }
+    .doc-nav a { margin-right: 12px; font-weight: 600; text-decoration: none; }
+    body.doc-body { background: #f1f5f9; min-height: 100vh; overflow: auto; touch-action: pan-y; }
+  </style>
+</head>
+<body class="doc-body">
+  <article class="doc-page">
+    <nav class="doc-nav" aria-label="页面导航">
+      <a href="./">← 返回游戏</a>
+      <a href="about.html">关于本游戏</a>
+    </nav>
+    <h1>隐私政策</h1>
+    <p class="meta">最后更新：2026-10-25 · 适用于大角牛快跑竖屏页（/mobile-web/）</p>
+
+    <p>本页说明竖屏跑酷如何处理信息。游戏页面是静态文件；若和横版一样由 <code>bull.lingecho.com</code> 提供，金币和昵称会走已有的 <code>/api</code>。没有接入广告 SDK 或支付 SDK。</p>
+
+    <h2>1. 存在这台设备上的数据</h2>
+    <ul>
+      <li><strong>本机排行、角色、抽奖示意</strong>：得分榜、游玩时长、演示昵称和头像 URL、抽奖状态，保存在浏览器 <code>localStorage</code>。</li>
+      <li><strong>设备号</strong>：<code>rb_device</code>，和横版网页共用，用来识别同一个游客账号。</li>
+    </ul>
+
+    <h2>2. 会发给服务器的数据</h2>
+    <ul>
+      <li>打开页面时：设备号，以及地址栏里的邀请码（如果有），用于创建或读取游客账号。</li>
+      <li>开局 / 结算：本局捡到的金币数量。竖屏得分不会写入全服最高分。</li>
+      <li>你在「设置昵称（演示）」里保存的昵称。头像 URL 只留在本机，不上传。</li>
+    </ul>
+    <p>服务器连不上时，游戏仍可在本机玩，上述同步会跳过。</p>
+
+    <h2>3. 我们不做什么</h2>
+    <ul>
+      <li>不加载广告脚本，展示广告位保持关闭。</li>
+      <li>撞障「激励视频」是本地倒计时，不上传观看记录。</li>
+      <li>抽奖和 Top3 红包是<strong>示意 / 非赌博</strong>，不产生真实支付。</li>
+      <li>没有微信登录。演示昵称不是微信账号。</li>
+    </ul>
+
+    <h2>4. 托管与日志</h2>
+    <p>静态文件由网站服务器（当前为 nginx）直接提供，<code>/api/</code> 转到本机游戏后端。服务器可能按常规记录访问日志（IP、浏览器、路径）。</p>
+
+    <h2>5. 你的选择</h2>
+    <p>可在浏览器里清除本站数据。清除后本机排行和设备号会重置；服务器上已记入钱包的金币仍挂在旧设备号上，除非后台另行删除。</p>
+
+    <h2>6. 儿童</h2>
+    <p>本游戏是休闲试玩。若你未满当地数字服务法定年龄，请在监护人指导下使用。</p>
+
+    <h2>7. 联系</h2>
+    <p>仓库：<a href="https://github.com/ChinaPoger/running_bull">github.com/ChinaPoger/running_bull</a>。政策变更会更新本页日期。</p>
+
+    <p class="meta"><a href="./">返回游戏</a> · <a href="about.html">关于</a></p>
+  </article>
+</body>
+</html>

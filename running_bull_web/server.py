@@ -260,10 +260,12 @@ def api_finish(h, body, rid):
     capped = score > cap_s or coins > cap_c
     score, coins = min(score, cap_s), min(coins, cap_c)
     earned = coins * (2 if r['dbl'] else 1)
+    # 竖屏 /mobile-web/ 计分和横版不是同一套，只把金币计入共用钱包，不改全服 best。
+    portrait = str(body.get('board') or '') == 'portrait'
     db.execute('UPDATE runs SET finished = 1, ended_at = ?, score = ?, coins = ? WHERE id = ?', (now(), score, earned, rid))
     if earned:
-        add_coins(u['id'], earned, 'run')
-    new_record = score > u['best']
+        add_coins(u['id'], earned, 'run_portrait' if portrait else 'run')
+    new_record = (not portrait) and score > u['best']
     if new_record:
         db.execute('UPDATE users SET best = ? WHERE id = ?', (score, u['id']))
     db.commit()
@@ -657,12 +659,24 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.log_error('server error: %r', e)
                 return self.send_json(500, {'error': '服务器出错了'})
-        # 静态文件
+        # 静态文件（目录补 index.html；/mobile-web 会 302 到 /mobile-web/，相对路径才正确）
         if method != 'GET':
             return self.send_json(405, {'error': 'method not allowed'})
-        p = u.path if u.path != '/' else '/index.html'
-        f = os.path.realpath(os.path.join(PUBLIC, p.lstrip('/')))
-        if not f.startswith(os.path.realpath(PUBLIC)) or not os.path.isfile(f):
+        rel = u.path or '/'
+        root = os.path.realpath(PUBLIC)
+        f = os.path.realpath(os.path.join(PUBLIC, rel.lstrip('/')))
+        if f != root and not f.startswith(root + os.sep):
+            self.send_response(404); self.end_headers(); return
+        if os.path.isdir(f):
+            if not rel.endswith('/'):
+                self.send_response(302)
+                self.send_header('Location', rel + '/')
+                self.end_headers()
+                return
+            f = os.path.join(f, 'index.html')
+        elif rel == '/':
+            f = os.path.join(root, 'index.html')
+        if not os.path.isfile(f):
             self.send_response(404); self.end_headers(); return
         data = open(f, 'rb').read()
         self.send_response(200)
