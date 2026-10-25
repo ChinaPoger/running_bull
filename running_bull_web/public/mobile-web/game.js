@@ -126,8 +126,18 @@
   const JUMP_HEIGHT = 125;
   const JUMP_BUFFER = 0.14;
   const JUMP_LAND_GRACE = 0.12;
-  /** Subway-style roll/slide: short, hard-cut pose (no blend). */
-  const SLIDE_DURATION = 0.42;
+  /**
+   * Duck pose is distance-based, not a fixed 0.42s.
+   * The kill window is HIT_Z_MAX-HIT_Z_MIN wide. At the easy start speed that
+   * band lasts ~0.46s (longer in 慢慢跑), so a 0.42s swipe stood back up while
+   * the tall bar was still overlapping and the run died. Hold the pose while a
+   * slide-clearable obstacle in this lane is inside the approach band, and for
+   * a short minimum so an empty-lane duck still reads as a slide.
+   */
+  const SLIDE_LEAD_Z = 0.52;
+  const SLIDE_EXIT_PAD = 0.045;
+  const SLIDE_MIN_Z = 0.22;
+  const SLIDE_MAX_Z = 1.25;
   const HIT_Z_MIN = 0.70;
   const HIT_Z_MAX = 0.82;
   /** Ease: slower start + gentler ramp (was 280→520 @ 0.35). */
@@ -233,7 +243,7 @@
     jumpBuffered: 0,
     landGrace: 0,
     sliding: false,
-    slideT: 0,
+    slideTravel: 0,
   };
 
   /** @type {Array<{lane:number,z:number,kind:string,alive:boolean,variant?:string,tall?:boolean}>} */
@@ -938,7 +948,7 @@
     player.jumpBuffered = 0;
     player.landGrace = 0;
     player.sliding = false;
-    player.slideT = 0;
+    player.slideTravel = 0;
     entities = [];
     bombs = [];
     particles = [];
@@ -1166,7 +1176,7 @@
     }
     // Hard-cut out of slide into jump (no pose blend).
     player.sliding = false;
-    player.slideT = 0;
+    player.slideTravel = 0;
     player.jumping = true;
     player.jumpT = 0;
     player.jumpBuffered = 0;
@@ -1188,6 +1198,37 @@
     if (pose && pose.jumping) return true;
     if (pose && pose.sliding && !(e && e.tall)) return true;
     return false;
+  }
+
+  /** Low props and the duck-only high bar. Trains / obelisks / tall zombies stay jump-only. */
+  function obstacleSlideClearable(e) {
+    if (!e) return false;
+    if (e.duckOnly) return true;
+    return !e.tall;
+  }
+
+  /**
+   * True while the duck pose should stay down.
+   * `travelZ` is how far the road has moved since the swipe.
+   * `obstacles` are the alive obstacles already filtered to the player's lane.
+   */
+  function slidePoseHeld(travelZ, obstacles) {
+    const commitZ = HIT_Z_MIN - SLIDE_LEAD_Z;
+    const exitZ = HIT_Z_MAX + SLIDE_EXIT_PAD;
+    let covering = false;
+    const list = obstacles || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false) continue;
+      if (!obstacleSlideClearable(e)) continue;
+      if (e.z >= commitZ && e.z < exitZ) {
+        covering = true;
+        break;
+      }
+    }
+    if (travelZ >= SLIDE_MAX_Z) return false;
+    if (covering) return true;
+    return travelZ < SLIDE_MIN_Z;
   }
 
   /** Slide clears low props; tall still needs jump. High bars need a duck. */
@@ -1216,7 +1257,7 @@
     player.jumpBuffered = 0;
     player.landGrace = 0;
     player.sliding = true;
-    player.slideT = 0;
+    player.slideTravel = 0;
   }
 
   function bombColors() {
@@ -2375,15 +2416,6 @@
       player.landGrace = 0;
     }
 
-    if (player.sliding) {
-      player.slideT += dt;
-      if (player.slideT >= SLIDE_DURATION) {
-        player.sliding = false;
-        player.slideT = 0;
-        landDustT = Math.max(landDustT, 0.18);
-      }
-    }
-
     if (bombCd > 0) {
       bombCd -= dt;
       if (bombCd <= 0) {
@@ -2466,11 +2498,27 @@
         if (isInvulnerable() || isPlantWallnutShield()) {
           smashObstacle(e);
         } else if (isObstacleClearing(e)) {
-          /* jump or slide under low props */
+          /* jump or slide under low props; duck stays down through the tall bar */
         } else {
           triggerRewardedAd(e);
           return;
         }
+      }
+    }
+
+    // Release only after the hit check so the frame that clears the bar still counts as a duck.
+    if (player.sliding) {
+      player.slideTravel += zSpeed * dt;
+      const laneObs = [];
+      for (let i = 0; i < entities.length; i++) {
+        const obs = entities[i];
+        if (!obs.alive || obs.kind !== "obstacle" || obs.lane !== player.lane) continue;
+        laneObs.push(obs);
+      }
+      if (!slidePoseHeld(player.slideTravel, laneObs)) {
+        player.sliding = false;
+        player.slideTravel = 0;
+        landDustT = Math.max(landDustT, 0.18);
       }
     }
 
