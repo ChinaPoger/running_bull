@@ -1371,13 +1371,30 @@
     return player.jumping || player.landGrace > 0;
   }
 
-  /** Slide clears low props; tall still needs jump (or invuln). */
-  function isObstacleClearing(e) {
-    if (isInvulnerable()) return true;
-    if (mode === "plant" && plantWallnutT > 0) return true;
-    if (isJumpClearing()) return true;
-    if (player.sliding && !(e && e.tall)) return true;
+  /**
+   * Duck-only bars (high_bar) ignore jump. Slide/crouch is the pass.
+   * Existing tall props (train, obelisk) still need a jump; slide does not clear them.
+   * Invuln and the plant wallnut smash or skip the hit before this is consulted.
+   */
+  function obstacleClearedBy(pose, e) {
+    if (pose && (pose.invuln || pose.wallnut)) return true;
+    if (e && e.duckOnly) return !!(pose && pose.sliding);
+    if (pose && pose.jumping) return true;
+    if (pose && pose.sliding && !(e && e.tall)) return true;
     return false;
+  }
+
+  /** Slide clears low props; tall still needs jump. High bars need a duck. */
+  function isObstacleClearing(e) {
+    return obstacleClearedBy(
+      {
+        invuln: isInvulnerable(),
+        wallnut: mode === "plant" && plantWallnutT > 0,
+        jumping: isJumpClearing(),
+        sliding: player.sliding,
+      },
+      e
+    );
   }
 
   function isPlantWallnutShield() {
@@ -1515,6 +1532,83 @@
     for (const e of entities) {
       if (e.hitFlash > 0) e.hitFlash -= dt;
     }
+  }
+
+  /** Paid bomb: every obstacle currently spawned, all lanes. Coins on the obstacles stay put. */
+  function clearAllObstacles() {
+    let n = 0;
+    for (const e of entities) {
+      if (!e.alive || e.kind !== "obstacle") continue;
+      e.alive = false;
+      const z = Math.max(0.02, Math.min(0.98, e.z));
+      boomBurst(e.lane, z, 0.85);
+      spawnBlast(e.lane, z, 0.42, 3);
+      n += 1;
+    }
+    shakeT = Math.max(shakeT, 0.62);
+    flashT = Math.max(flashT, 0.5);
+    spawnFloatText(player.lane, 0.78, n ? "清屏 ×" + n : "清屏", "#ffe566");
+    return n;
+  }
+
+  function grantPaidInvuln() {
+    invulnT = INVULN_DURATION;
+    flashT = Math.max(flashT, 0.35);
+    shakeT = Math.max(shakeT, 0.22);
+    burst(player.lane, 0.78, "rgba(255,220,80,0.9)", 18);
+    spawnFloatText(player.lane, 0.78, "无敌!", "#ffe566");
+    syncInvulnUi();
+  }
+
+  function grantPaidBoost() {
+    boostT = BOOST_DURATION;
+    boostCd = 0;
+    boostLockT = BOOST_LOCK;
+    flashT = Math.max(flashT, 0.22);
+    shakeT = Math.max(shakeT, 0.12);
+    const label = mode === "plane" ? "后喷!" : "加速!";
+    const col = mode === "plane" ? "#7ec8ff" : "#ffcc44";
+    burst(player.lane, 0.78, mode === "plane" ? "rgba(120,200,255,0.9)" : "rgba(255,180,60,0.9)", 14);
+    spawnFloatText(player.lane, 0.78, label, col);
+    syncBoostUi();
+  }
+
+  function toastShop(msg) {
+    showRewardToast(msg);
+  }
+
+  function onBuyPower(item) {
+    if (typeof window.__RB_BUY_POWER !== "function") {
+      toastShop("商店还没连上");
+      return;
+    }
+    window.__RB_BUY_POWER(item).then(function () {
+      toastShop("已放入背包");
+    }).catch(function (err) {
+      toastShop((err && err.message) || "购买失败");
+    });
+  }
+
+  function onUsePower(item) {
+    if (!running || dead || deathFx || isRewardedAdOpen()) {
+      toastShop("开跑后才能用");
+      return;
+    }
+    if (typeof window.__RB_USE_POWER !== "function") {
+      toastShop("商店还没连上");
+      return;
+    }
+    window.__RB_USE_POWER(item).then(function () {
+      if (!running || dead || deathFx) {
+        toastShop("已扣金币，这一局结束了");
+        return;
+      }
+      if (item === "bomb") clearAllObstacles();
+      else if (item === "invuln") grantPaidInvuln();
+      else if (item === "boost") grantPaidBoost();
+    }).catch(function (err) {
+      toastShop((err && err.message) || "使用失败");
+    });
   }
 
   /** Destroy obstacles on one lane in z range; coins untouched. */
@@ -1835,21 +1929,22 @@
   function pickObstacleVariant() {
     if (mode === "space") {
       const r = Math.random();
-      if (r < 0.45) return { variant: "crystal", tall: false };
-      if (r < 0.75) return { variant: "crystal_cluster", tall: false };
+      if (r < 0.18) return { variant: "high_bar", tall: false, duckOnly: true };
+      if (r < 0.52) return { variant: "crystal", tall: false };
+      if (r < 0.76) return { variant: "crystal_cluster", tall: false };
       return { variant: "obelisk", tall: true };
     }
     if (mode === "chill") {
-      // Soft, jumpable-only props — no trains.
       const r = Math.random();
-      if (r < 0.4) return { variant: "box", tall: false };
-      if (r < 0.75) return { variant: "barrier", tall: false };
+      if (r < 0.16) return { variant: "high_bar", tall: false, duckOnly: true };
+      if (r < 0.48) return { variant: "box", tall: false };
+      if (r < 0.76) return { variant: "barrier", tall: false };
       return { variant: "sign", tall: false };
     }
     if (mode === "plant") {
-      // Homage zombies — mostly jumpable; occasional tall.
       const r = Math.random();
-      if (r < 0.78) return { variant: "zombie", tall: false };
+      if (r < 0.18) return { variant: "high_bar", tall: false, duckOnly: true };
+      if (r < 0.80) return { variant: "zombie", tall: false };
       return { variant: "zombie_tall", tall: true };
     }
     if (mode === "plane") {
@@ -1862,9 +1957,10 @@
       };
     }
     const r = Math.random();
-    if (r < 0.34) return { variant: "box", tall: false };
-    if (r < 0.58) return { variant: "barrier", tall: false };
-    if (r < 0.78) return { variant: "sign", tall: false };
+    if (r < 0.18) return { variant: "high_bar", tall: false, duckOnly: true };
+    if (r < 0.46) return { variant: "box", tall: false };
+    if (r < 0.66) return { variant: "barrier", tall: false };
+    if (r < 0.82) return { variant: "sign", tall: false };
     return { variant: "train", tall: true };
   }
 
@@ -1890,6 +1986,7 @@
       alive: true,
       variant: v.variant,
       tall: v.tall,
+      duckOnly: !!v.duckOnly,
       hp: v.hp != null ? v.hp : 1,
       maxHp: v.maxHp != null ? v.maxHp : 1,
     });
@@ -3498,6 +3595,10 @@
     }
     if (e.kind !== "obstacle") return;
     const v = e.variant || (mode === "space" ? "crystal" : "box");
+    if (e.duckOnly || v === "high_bar") {
+      drawHighBarrier(p);
+      return;
+    }
     if (mode === "plant") {
       drawZombieObstacle(p, v === "zombie_tall");
       return;
@@ -3852,6 +3953,68 @@
     ctx.lineTo(x + w * 0.28, y - h * 0.15);
     ctx.moveTo(x + w * 0.28, y - h * 0.85);
     ctx.lineTo(x - w * 0.28, y - h * 0.15);
+    ctx.stroke();
+  }
+
+  /** Overhead gantry. The opening is at crouch height; a jump meets the beam. */
+  function drawHighBarrier(p) {
+    const s = p.scale;
+    const ground = p.y;
+    const beamTop = ground - 108 * s;
+    const beamBot = ground - 50 * s;
+    const beamH = Math.max(8, beamBot - beamTop);
+    const w = 74 * s;
+    const x0 = p.x - w * 0.5;
+    const postW = 7 * s;
+    const space = mode === "space";
+    const plant = mode === "plant";
+    drawGroundShadow(p, 36, 8);
+
+    ctx.fillStyle = space ? "#3b0764" : plant ? "#3f6212" : "#2a241c";
+    ctx.fillRect(x0, beamTop, postW, ground - beamTop);
+    ctx.fillRect(x0 + w - postW, beamTop, postW, ground - beamTop);
+
+    const beam = ctx.createLinearGradient(x0, beamTop, x0, beamBot);
+    if (space) {
+      beam.addColorStop(0, "#e9d5ff");
+      beam.addColorStop(1, "#7e22ce");
+    } else if (plant) {
+      beam.addColorStop(0, "#fef08a");
+      beam.addColorStop(1, "#ca8a04");
+    } else {
+      beam.addColorStop(0, "#fff7ed");
+      beam.addColorStop(1, "#f59e0b");
+    }
+    ctx.fillStyle = beam;
+    ctx.fillRect(x0, beamTop, w, beamH);
+
+    const stripe = 10 * s;
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = i % 2 === 0 ? (space ? "#6d28d9" : "#111827") : (space ? "#f5d0fe" : "#facc15");
+      ctx.beginPath();
+      ctx.moveTo(x0 + i * stripe, beamTop);
+      ctx.lineTo(x0 + i * stripe + stripe, beamTop);
+      ctx.lineTo(x0 + i * stripe + stripe + 6 * s, beamBot);
+      ctx.lineTo(x0 + i * stripe + 6 * s, beamBot);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = Math.max(1, 2 * s);
+    ctx.strokeRect(x0, beamTop, w, beamH);
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold " + Math.max(10, Math.round(13 * s)) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("下蹲", p.x, beamTop + beamH * 0.5);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = Math.max(1, 1.5 * s);
+    ctx.beginPath();
+    ctx.moveTo(x0 + 3 * s, beamBot + 8 * s);
+    ctx.lineTo(p.x, beamBot + 16 * s);
+    ctx.lineTo(x0 + w - 3 * s, beamBot + 8 * s);
     ctx.stroke();
   }
 
@@ -5014,6 +5177,12 @@
   bindPress(btnBomb, fireBomb);
   bindPress(btnInvuln, activateInvuln);
   bindPress(btnBoost, activateBoost);
+  document.querySelectorAll("[data-shop-buy]").forEach((btn) => {
+    bindPress(btn, () => onBuyPower(btn.getAttribute("data-shop-buy")));
+  });
+  document.querySelectorAll("[data-shop-use]").forEach((btn) => {
+    bindPress(btn, () => onUsePower(btn.getAttribute("data-shop-use")));
+  });
 
   /** Pick a mode card. Re-tapping already-selected plant starts the run (phone-friendly). */
   let lastModePickAt = 0;
@@ -5287,6 +5456,8 @@
   } catch (e) {}
   renderAuth();
   renderLeaderboards();
+
+  window.__RB_OBSTACLE_CLEARS = obstacleClearedBy;
 
   window.__RB_APPLY_SERVER_USER = function (u) {
     if (!u || !u.nickname) return;

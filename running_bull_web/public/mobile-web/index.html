@@ -9,7 +9,7 @@
   <meta name="description" content="大角牛快跑 · 勇敢牛牛，不怕困难 —— 竖屏三道跑酷" />
   <title>大角牛快跑 · 竖屏跑酷</title>
   <link rel="icon" href="../assets/coin.png" />
-  <link rel="stylesheet" href="style.css?v=portrait1" />
+  <link rel="stylesheet" href="style.css?v=career1" />
 </head>
 <body>
   <div id="app" data-theme="earth">
@@ -53,6 +53,40 @@
 
     <canvas id="game" width="420" height="740" aria-label="大角牛快跑画面"></canvas>
 
+    <div id="run-chrome">
+      <div id="run-shop" class="run-shop" aria-label="局内道具">
+        <button type="button" class="run-power" data-shop-use="bomb" data-price="300" aria-label="使用炸弹，300 金币，清掉画面上全部障碍">
+          <span class="run-power-ico" aria-hidden="true">💣</span>
+          <span class="run-power-name">炸弹</span>
+          <span class="use-label">300</span>
+        </button>
+        <button type="button" class="run-power" data-shop-use="invuln" data-price="500" aria-label="使用无敌，500 金币">
+          <span class="run-power-ico" aria-hidden="true">🛡️</span>
+          <span class="run-power-name">无敌</span>
+          <span class="use-label">500</span>
+        </button>
+        <button type="button" class="run-power" data-shop-use="boost" data-price="500" aria-label="使用加速，500 金币">
+          <span class="run-power-ico" aria-hidden="true">⚡</span>
+          <span class="run-power-name">加速</span>
+          <span class="use-label">500</span>
+        </button>
+      </div>
+      <div class="career-strip career-strip-run" aria-label="生涯累计">
+        <div class="career-cell">
+          <span class="career-label">总积分</span>
+          <strong data-career="score">0</strong>
+        </div>
+        <div class="career-cell">
+          <span class="career-label">总金币</span>
+          <strong data-career="coins">0</strong>
+        </div>
+        <div class="career-cell">
+          <span class="career-label">总距离</span>
+          <strong data-career="distance">0</strong>
+        </div>
+      </div>
+    </div>
+
     <div id="touch-layer">
       <button type="button" id="btn-left" class="touch-btn lane" aria-label="向左换道">◀</button>
       <button type="button" id="btn-jump" class="touch-btn jump" aria-label="起跳">跳</button>
@@ -73,6 +107,52 @@
         <p class="slogan" id="title-slogan">勇敢牛牛，不怕困难</p>
         <h1 id="title-heading">大角牛快跑</h1>
         <p class="hint" id="mode-hint">选地图 · 点下方卡片（手机无需键盘）</p>
+
+        <div class="career-strip" aria-label="生涯累计">
+          <div class="career-cell">
+            <span class="career-label">总积分</span>
+            <strong data-career="score">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总金币</span>
+            <strong data-career="coins">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总距离</span>
+            <strong data-career="distance">0</strong>
+          </div>
+        </div>
+
+        <div id="shop-panel" class="shop-panel" aria-label="道具商店">
+          <div class="shop-head">
+            <span>道具商店</span>
+            <span id="shop-wallet">钱包 —</span>
+          </div>
+          <div class="shop-grid">
+            <button type="button" class="shop-card" data-shop-buy="bomb" data-price="300" aria-label="购买炸弹，300 金币，清掉画面上全部障碍">
+              <span class="shop-ico" aria-hidden="true">💣</span>
+              <span class="shop-name">炸弹</span>
+              <span class="shop-desc">清掉画面上全部障碍</span>
+              <span class="shop-price">300</span>
+              <span class="shop-own" data-power="bomb">×0</span>
+            </button>
+            <button type="button" class="shop-card" data-shop-buy="invuln" data-price="500" aria-label="购买无敌，500 金币，10 秒无敌">
+              <span class="shop-ico" aria-hidden="true">🛡️</span>
+              <span class="shop-name">无敌</span>
+              <span class="shop-desc">10 秒撞碎障碍</span>
+              <span class="shop-price">500</span>
+              <span class="shop-own" data-power="invuln">×0</span>
+            </button>
+            <button type="button" class="shop-card" data-shop-buy="boost" data-price="500" aria-label="购买加速，500 金币，短冲刺">
+              <span class="shop-ico" aria-hidden="true">⚡</span>
+              <span class="shop-name">加速</span>
+              <span class="shop-desc">短冲刺 ×1.45</span>
+              <span class="shop-price">500</span>
+              <span class="shop-own" data-power="boost">×0</span>
+            </button>
+          </div>
+          <p class="shop-note">购买放进背包，开跑后用下方按钮。背包是空的就按标价直接扣钱包。花的是已入账金币，本局新捡的要等结算。</p>
+        </div>
 
         <div id="hero-pick" role="group" aria-label="选择角色">
           <button type="button" class="hero-card selected" data-hero="bull" aria-pressed="true">
@@ -138,13 +218,13 @@
         <ul class="tips">
           <li>左右按钮或左右滑 = 换道</li>
           <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
-          <li>下滑 / ↓ = 滑铲（硬切蹲姿，可钻低障）</li>
-          <li>💣 / 植物模式 🍒：清当前道（植物模式连续 10 秒）</li>
+          <li>下滑 / ↓ = 下蹲。低障可以钻；黄黑高栏只能蹲，起跳会撞上</li>
+          <li>💣 / 植物模式 🍒：免费清当前道（植物模式连续 10 秒）。商店炸弹 300 才清全屏</li>
           <li>🌲 优美森林：背对四分之三跑 · 神光树影（键6）</li>
           <li>🌻 植物跑酷：捡向日葵/豌豆/加特林/坚果打僵尸</li>
           <li>✈️ 飞机大战：默认扫射；小怪3血/大怪10血；弯道；键0</li>
-          <li>⚡ 短冲刺×3：键 X / 触控 ⚡ · 约 1 秒加速×1.45，冷却 2.5 秒（飞机=后喷）</li>
-          <li>🛡️ 无敌×3：点开后 10 秒撞碎障碍</li>
+          <li>⚡ 短冲刺×3：键 X / 触控 ⚡ · 约 1 秒加速×1.45，冷却 2.5 秒（飞机=后喷）。商店加速 500 再来一次</li>
+          <li>🛡️ 无敌×3：点开后 10 秒撞碎障碍。商店无敌 500 再开 10 秒</li>
           <li>📺 撞障看激励广告（示意 2 秒）后继续；跳过两次认栽结算；看完送短护盾/清道</li>
         </ul>
 
@@ -225,6 +305,20 @@
         <p class="over-encourage">勇敢牛牛，再来一次</p>
         <p class="result" id="over-line-dist">距离 <strong id="over-dist">0</strong> · 金币 <strong id="over-coins">0</strong></p>
         <p class="result score" id="over-line-score">得分 <strong id="over-score">0</strong></p>
+        <div class="career-strip career-strip-over" aria-label="生涯累计">
+          <div class="career-cell">
+            <span class="career-label">总积分</span>
+            <strong data-career="score">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总金币</span>
+            <strong data-career="coins">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总距离</span>
+            <strong data-career="distance">0</strong>
+          </div>
+        </div>
         <p class="result" id="over-line-time">本局时长 <strong id="over-playtime">0秒</strong></p>
         <div id="prize-banner-over" class="prize-banner compact" aria-label="跑酷抽奖与 Top3 红包（示意/非赌）"></div>
         <div id="ad-slot-over" class="ad-slot ad-slot-over" data-ad-slot="result" aria-label="展示广告位（结算页，未启用）">
@@ -290,7 +384,7 @@
       note: "Display only. Rewarded hit ads stay on window.__RB_REWARDED_AD (mock)."
     };
   </script>
-  <script src="game.js?v=revive1"></script>
-  <script src="sync.js?v=device1"></script>
+  <script src="game.js?v=career1"></script>
+  <script src="sync.js?v=career1"></script>
 </body>
 </html>

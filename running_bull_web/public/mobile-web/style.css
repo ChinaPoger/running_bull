@@ -1476,3 +1476,188 @@ html, body {
 .legal-links a {
   color: #0369a1;
 }
+
+/* —— 生涯累计 + 竖屏道具商店 —— */
+.career-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.career-cell {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 12px;
+  padding: 6px 4px 7px;
+  text-align: center;
+  min-width: 0;
+}
+.career-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #9a3412;
+}
+.career-cell strong {
+  display: block;
+  margin-top: 1px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #c2410c;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.career-strip-over {
+  margin: 4px 0 12px;
+}
+.career-strip-run {
+  margin: 0;
+  pointer-events: none;
+}
+.career-strip-run .career-cell {
+  background: rgba(12, 20, 36, 0.72);
+  border-color: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+}
+.career-strip-run .career-label {
+  color: rgba(255, 255, 255, 0.82);
+}
+.career-strip-run .career-cell strong {
+  color: #fff;
+  font-size: 15px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.shop-panel {
+  margin: 0 0 14px;
+  padding: 10px 8px 8px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fff7ed, #ffedd5);
+  border: 1px solid #fdba74;
+  text-align: left;
+}
+.shop-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 2px 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #9a3412;
+}
+#shop-wallet {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.shop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.shop-card {
+  appearance: none;
+  border: 2px solid #fdba74;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  cursor: pointer;
+  color: #1a2030;
+  touch-action: manipulation;
+}
+.shop-card:active {
+  transform: scale(0.97);
+}
+.shop-card.broke {
+  opacity: 0.55;
+}
+.shop-ico {
+  font-size: 22px;
+  line-height: 1.1;
+}
+.shop-name {
+  font-size: 13px;
+  font-weight: 800;
+}
+.shop-desc {
+  font-size: 10px;
+  line-height: 1.25;
+  color: #9a3412;
+  min-height: 2.5em;
+}
+.shop-price {
+  font-size: 13px;
+  font-weight: 800;
+  color: #c2410c;
+  font-variant-numeric: tabular-nums;
+}
+.shop-price::before {
+  content: "💰 ";
+  font-size: 11px;
+}
+.shop-own {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c2d12;
+}
+.shop-note {
+  margin: 8px 2px 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #9a3412;
+}
+
+#run-chrome {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 10px;
+  pointer-events: none;
+}
+.run-shop {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  pointer-events: auto;
+}
+.run-power {
+  appearance: none;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(20, 16, 8, 0.78);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+  backdrop-filter: blur(6px);
+}
+.run-power:active {
+  transform: translateY(1px);
+}
+.run-power.broke,
+.run-power:disabled {
+  opacity: 0.45;
+}
+.run-power .use-label {
+  font-variant-numeric: tabular-nums;
+  color: #fde68a;
+}
+.run-power.owned .use-label {
+  color: #bbf7d0;
+}
