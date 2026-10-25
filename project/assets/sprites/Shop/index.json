@@ -1,0 +1,31 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": -10,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 470.0,
+      "y": 322.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "bg",
+      "path": "bg.png",
+      "builder_id": "hl31YxmwF6N6oMXGU6yeQ",
+      "imageWidth": 940,
+      "imageHeight": 644
+    }
+  ],
+  "builder_id": "19JJkAwZooLBqawEg6APD"
+}

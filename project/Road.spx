@@ -5,12 +5,17 @@ var (
 )
 
 func scroll() {
+	shown := -1
 	for {
+		if shown != curMap {
+			shown = curMap
+			setCostume curMap // 地图：0 草原，1 沙漠，2 夜晚
+		}
 		px -= curSpeed
 		if px <= -960 {
 			px += 1920
 		}
-		setXpos px
+		setXYpos px+shakeX, -91.5+shakeY
 		// 完全在画面外的那一张先藏起来，避免被舞台边界“卡”在边上露出一条
 		if px < -712 || px > 712 {
 			hide

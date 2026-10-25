@@ -37,13 +37,13 @@ onCloned data => {
 			px += (bullX - px) * 0.25
 			py += (ty - py) * 0.25
 			if absf(px-bullX) < 18 && absf(py-ty) < 25 {
-				addCoin()
+				addCoinAt(px, py)
 				deleteThisClone
 			}
 		} else {
 			px -= curSpeed
 			if myLane == bullLane && absf(px-bullX) < 24 && jumpH < 70 {
-				addCoin()
+				addCoinAt(px, py)
 				deleteThisClone
 			}
 		}

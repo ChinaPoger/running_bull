@@ -1,0 +1,75 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 300.0,
+      "y": 214.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "offer",
+      "path": "offer.png",
+      "builder_id": "uDHMzCvidZ7e3eTc5edIc",
+      "imageWidth": 600,
+      "imageHeight": 428
+    },
+    {
+      "x": 300.0,
+      "y": 214.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "poor",
+      "path": "poor.png",
+      "builder_id": "CjzxRo7eUMfFcMwtR8tS1",
+      "imageWidth": 600,
+      "imageHeight": 428
+    },
+    {
+      "x": 300.0,
+      "y": 214.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "ad3",
+      "path": "ad3.png",
+      "builder_id": "xY12cRr90ScwQMKSmT0No",
+      "imageWidth": 600,
+      "imageHeight": 428
+    },
+    {
+      "x": 300.0,
+      "y": 214.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "ad2",
+      "path": "ad2.png",
+      "builder_id": "M9GEqojqLTtULeA451cq1",
+      "imageWidth": 600,
+      "imageHeight": 428
+    },
+    {
+      "x": 300.0,
+      "y": 214.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "ad1",
+      "path": "ad1.png",
+      "builder_id": "vQMzT5xkCRaF1LJH2lMfS",
+      "imageWidth": 600,
+      "imageHeight": 428
+    }
+  ],
+  "builder_id": "I2PIxQEd6FuGzbXvFSsUH"
+}

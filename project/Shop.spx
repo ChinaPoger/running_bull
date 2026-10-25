@@ -1,0 +1,18 @@
+// 商店底板（v4）：标题页 / 结算页按 B 或点「商店」打开
+
+func open() {
+	setXYpos 0, -10
+	show
+	setLayer Front
+	ShopClose.open
+}
+
+onStart => {
+	hide
+	for {
+		if state != 3 && visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

@@ -1,0 +1,14 @@
+import (
+	"net/http"
+)
+
+onStart => {
+	println "PROBE start"
+	resp, err := http.Get("https://httpbin.org/get?from=spx")
+	if err != nil {
+		println "PROBE err", err
+		return
+	}
+	println "PROBE status", resp.StatusCode, "type", resp.Header.Get("Content-Type"), "len", resp.ContentLength
+	resp.Body.Close()
+}

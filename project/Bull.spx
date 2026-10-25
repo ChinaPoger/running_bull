@@ -6,23 +6,33 @@ var (
 	groundY  float64 // 当前（平滑后的）地面 y
 	curScale float64 // 当前（平滑后的）缩放
 	runFrame float64 // 跑步动画帧计数
+	jumpBuf  int     // 跳跃缓冲：落地前约 0.15 秒内按的跳会被记住，落地瞬间自动起跳
 )
 
 func reset() {
 	vy = 0
 	slideT = 0
 	runFrame = 0
+	jumpBuf = 0
 	say ""
 	clearGraphicEffects
 }
 
 func doJump() {
 	if jumpH <= 0 {
-		vy = 9
-		jumpH = 0.1
-		slideT = 0
-		sliding = false
+		startJump
+	} else {
+		jumpBuf = 9 // 还在空中：先记住，落地时自动跳
 	}
+}
+
+func startJump() {
+	vy = 9
+	jumpH = 0.1
+	slideT = 0
+	sliding = false
+	jumpBuf = 0
+	play "jump"
 }
 
 func doSlide() {
@@ -31,13 +41,15 @@ func doSlide() {
 	}
 	slideT = 36
 	sliding = true
+	jumpBuf = 0
+	play "slide"
 }
 
 func crash() {
 	vy = 0
 	slideT = 0
 	sliding = false
-	setCostume "jump"
+	setCostume curChar*6 + 4
 	say "哎呀！"
 }
 
@@ -47,7 +59,7 @@ onStart => {
 	setXYpos bullX, groundY
 	show
 	for {
-		if state == 1 {
+		if state == 1 && !frozen {
 			// 跳跃物理
 			if jumpH > 0 {
 				jumpH += vy
@@ -55,7 +67,16 @@ onStart => {
 				if jumpH <= 0 {
 					jumpH = 0
 					vy = 0
+					// 落地扬尘
+					spawnFx(2, bullX-14, groundY+6, -1.3, 0.3)
+					spawnFx(2, bullX+16, groundY+6, 1.3, 0.3)
+					if jumpBuf > 0 {
+						startJump // 跳跃缓冲：落地立刻再跳
+					}
 				}
+			}
+			if jumpBuf > 0 {
+				jumpBuf--
 			}
 			// 滑铲计时
 			if slideT > 0 {
@@ -65,29 +86,34 @@ onStart => {
 				sliding = false
 			}
 		}
-		if state != 2 {
+		if state != 2 && !frozen {
 			// 平滑换道（近大远小）
 			groundY += (laneY(bullLane) - groundY) * 0.35
 			curScale += (laneScale(bullLane) - curScale) * 0.35
-			setXYpos bullX, groundY+jumpH
+			setXYpos bullX+shakeX, groundY+jumpH+shakeY
 			setSize curScale
 			// 造型
+			base := curChar * 6 // 角色：0 大角牛，1 粉粉猪，2 咩咩羊（每个角色 6 个造型）
 			if jumpH > 0 {
-				setCostume "jump"
+				setCostume base + 4
 			} else if sliding {
-				setCostume "slide"
+				setCostume base + 5
 			} else {
 				runFrame += 0.12 + curSpeed*0.02
 				if runFrame >= 4 {
 					runFrame -= 4
 				}
-				setCostume int(runFrame)
+				setCostume base + int(runFrame)
 			}
 			// 冲刺时闪闪发光
 			if boostTime > 0 {
 				setGraphicEffect BrightnessEffect, 20+20*float64(int(boostTime/6)%2)
 			} else {
 				clearGraphicEffects
+			}
+			// 复活后 / 护盾抵挡后的无敌时间：一闪一闪
+			if invT > 0 {
+				setGraphicEffect GhostEffect, 55*float64(int(invT/5)%2)
 			}
 		}
 		waitNextFrame

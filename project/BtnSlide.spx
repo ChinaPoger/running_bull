@@ -1,0 +1,25 @@
+// 手机屏幕按钮：左下角「滑」（v3）。只在游戏中显示；按下的判定在舞台的 pollPointer 里（按下瞬间就触发，不用等松手）
+
+onStart => {
+	setXYpos -208, -148
+	hide
+	for {
+		if state == 1 && !frozen {
+			if !visible {
+				show
+			}
+			setLayer Front
+			if btnSlideT > 0 {
+				btnSlideT--
+				setSize 0.86
+				setGraphicEffect GhostEffect, 5
+			} else {
+				setSize 1
+				setGraphicEffect GhostEffect, 35
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

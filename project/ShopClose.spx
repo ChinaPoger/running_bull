@@ -1,0 +1,17 @@
+// 商店右上角「返回」按钮（点击判定在舞台的 shopClick 里）
+
+func open() {
+	setXYpos 195, 128
+	show
+	setLayer Front
+}
+
+onStart => {
+	hide
+	for {
+		if state != 3 && visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

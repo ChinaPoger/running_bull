@@ -25,7 +25,29 @@
       "builder_id": "Y7dWWm38fJ5yYkAUxKPXz",
       "imageWidth": 1920,
       "imageHeight": 354
+    },
+    {
+      "x": 960.0,
+      "y": 177.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "road_desert",
+      "path": "road_desert.png",
+      "builder_id": "HMA5ojirEiOLNfTBGdpoY",
+      "imageWidth": 1920,
+      "imageHeight": 354
+    },
+    {
+      "x": 960.0,
+      "y": 177.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "road_night",
+      "path": "road_night.png",
+      "builder_id": "FJxoUDCIDzbSveEGCGf5s",
+      "imageWidth": 1920,
+      "imageHeight": 354
     }
   ],
-  "builder_id": "HMA5ojirEiOLNfTBGdpoY"
+  "builder_id": "AgUNISQGOmX162XnvPdSX"
 }

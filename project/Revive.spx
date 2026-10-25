@@ -1,0 +1,32 @@
+// 复活面板（v4）：撞车后弹出——花金币复活 / 看示意广告复活（3 秒倒计时）/ 放弃
+
+func showOffer() {
+	if wallet >= reviveCost {
+		setCostume "offer"
+	} else {
+		setCostume "poor"
+	}
+	setXYpos 0, 0
+	show
+	setLayer Front
+}
+
+onStart => {
+	hide
+	for {
+		if visible {
+			if reviveMode == 2 {
+				if adT > 120 {
+					setCostume "ad3"
+				} else if adT > 60 {
+					setCostume "ad2"
+				} else {
+					setCostume "ad1"
+				}
+			} else if reviveMode == 0 || state != 1 {
+				hide
+			}
+		}
+		waitNextFrame
+	}
+}

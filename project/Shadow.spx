@@ -6,7 +6,7 @@ onStart => {
 		if h > 100 {
 			h = 100
 		}
-		setXYpos bullX+4, Bull.groundY
+		setXYpos bullX+4+shakeX, Bull.groundY+shakeY
 		setSize Bull.curScale * (1 - h/250)
 		waitNextFrame
 	}

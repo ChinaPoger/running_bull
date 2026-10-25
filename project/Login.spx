@@ -1,0 +1,11 @@
+// 登录面板（v5）：昵称 + 4 位 PIN 登录 / 注册，或游客试玩。按钮点击判定在舞台的 loginClick 里
+
+func open() {
+	setXYpos 0, -5
+	show
+	setLayer Front
+}
+
+onStart => {
+	hide
+}

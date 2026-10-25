@@ -1,0 +1,26 @@
+// 提示条：金币不够 / 购买成功 / 已装备 / 最多持有 3 个 / 护盾抵挡 / 复活 / 金币 -100 / 离线 / 注册成功 / 登录成功
+
+var (
+	tt int
+)
+
+func pop(k int) {
+	setCostume k
+	setXYpos 0, 95
+	tt = 70
+	show
+	setLayer Front
+}
+
+onStart => {
+	hide
+	for {
+		if tt > 0 {
+			tt--
+			if tt == 0 {
+				hide
+			}
+		}
+		waitNextFrame
+	}
+}

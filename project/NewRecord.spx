@@ -17,6 +17,9 @@ onStart => {
 	for {
 		if visible {
 			t++
+			if t == 25 {
+				play "newrecord" // 撞车声之后再响起“新纪录”的欢呼
+			}
 			s := 1.0 + 0.06*float64(int(t/10)%2)
 			if t < 12 {
 				s = 0.3 + t*0.06

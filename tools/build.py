@@ -34,25 +34,46 @@ def sprite(name, costumes, x=0, y=0, visible=False, size=1, idx=0):
     return cfg
 
 S={}
-S['Road']=sprite('Road',[('road','road','center')],0,-91.5,True)
+S['Road']=sprite('Road',[('road','road','center'),('road_desert','road_desert','center'),('road_night','road_night','center')],0,-91.5,True)
 S['Coin']=sprite('Coin',[('coin','coin','center')],120,-40)
 S['Boost']=sprite('Boost',[('boost','boost','center')],160,-40)
 S['Obstacle']=sprite('Obstacle',[('hurdle_back','hurdle_back','depth'),('hurdle_front','hurdle_front','depth'),('rocks','rocks_sh','shadow'),
     ('gate_back','gate_back','depth'),('gate_front','gate_front','depth'),('hay','hay_sh','shadow'),('crate','crate_sh','shadow')],60,-112)
 S['Shadow']=sprite('Shadow',[('shadow','bull_shadow','center')],-146,-112,True,0.93)
-S['Bull']=sprite('Bull',[('run1','bull_run1'),('run2','bull_run2'),('run3','bull_run3'),('run4','bull_run4'),('jump','bull_jump'),('slide','bull_slide')],-150,-112,True,0.93)
+S['Bull']=sprite('Bull',[(f'{p}_{n}',f'{p}_{n}') for p in ['bull','pig','sheep'] for n in ['run1','run2','run3','run4','jump','slide']],-150,-112,True,0.93)
 S['NewRecord']=sprite('NewRecord',[('badge','new_record','center')],0,-75)
 S['Panel']=sprite('Panel',[('title','panel_title','center'),('over','panel_over','center')],0,62)
-order=['Road','Coin','Boost','Obstacle','Shadow','Bull','NewRecord','Panel']
+S['Fx']=sprite('Fx',[('plus10','fx_plus10','center'),('spark','fx_spark','center'),('dust','fx_dust','center'),('plus20','fx_plus20','center')],0,0)
+S['BtnSlide']=sprite('BtnSlide',[('btn','btn_slide','center')],-208,-148)
+S['BtnJump']=sprite('BtnJump',[('btn','btn_jump','center')],208,-148)
+S['Flash']=sprite('Flash',[('white','flash','center')],0,0)
+S['ShopBtn']=sprite('ShopBtn',[('btn','shop_btn','center')],190,-152)
+S['Shop']=sprite('Shop',[('bg','shop_bg','center')],0,-10)
+S['ShopCard']=sprite('ShopCard',[(f'c{i}_{st}',f'card_{i}_{st}','center') for i in range(8) for st in (range(3) if i<6 else range(4))],0,0)
+S['ShopCursor']=sprite('ShopCursor',[('frame','card_cursor','center')],0,0)
+S['ShopClose']=sprite('ShopClose',[('btn','shop_close','center')],195,128)
+S['Revive']=sprite('Revive',[('offer','revive_offer','center'),('poor','revive_poor','center'),('ad3','ad_3','center'),('ad2','ad_2','center'),('ad1','ad_1','center')],0,0)
+S['Toast']=sprite('Toast',[(f't{k}',f'toast_{k}','center') for k in range(7)],0,95)
+order=['Road','Coin','Boost','Obstacle','Shadow','Bull','Fx','BtnSlide','BtnJump','Flash','NewRecord','Panel','ShopBtn','Shop','ShopCard','ShopCursor','ShopClose','Revive','Toast']
+import wave
+SND={}
+for sn in ['bgm','jump','slide','coin','boost','crash','newrecord']:
+    os.makedirs(f'{P}assets/sounds/{sn}',exist_ok=True)
+    shutil.copy(f'{O}sounds/{sn}.wav',f'{P}assets/sounds/{sn}/{sn}.wav')
+    w=wave.open(f'{O}sounds/{sn}.wav')
+    SND[sn]={"path":sn+'.wav',"rate":w.getframerate(),"sampleCount":w.getnframes(),"builder_id":nid()}
+    json.dump(SND[sn],open(f'{P}assets/sounds/{sn}/index.json','w'),indent=2)
 
 shutil.copy(O+'backdrop.png', P+'assets/backdrop.png')
 bw,bh=Image.open(O+'backdrop.png').size
 def mon(name,label,val,x,y,visible=True):
     return {"type":"monitor","name":name,"builder_id":nid(),"x":x,"y":y,"size":1,"visible":visible,
             "label":label,"mode":1,"style":"default","target":"","val":val}
+for bn in ['backdrop_desert','backdrop_night']: shutil.copy(O+bn+'.png', P+'assets/'+bn+'.png')
 index={
- "backdrops":[{"name":"farm","path":"backdrop.png","x":bw/2,"y":bh/2,"bitmapResolution":RES,
-               "builder_id":nid(),"imageWidth":bw,"imageHeight":bh}],
+ "backdrops":[{"name":"farm","path":"backdrop.png","x":bw/2,"y":bh/2,"bitmapResolution":RES,"builder_id":nid(),"imageWidth":bw,"imageHeight":bh},
+              {"name":"desert","path":"backdrop_desert.png","x":bw/2,"y":bh/2,"bitmapResolution":RES,"builder_id":nid(),"imageWidth":bw,"imageHeight":bh},
+              {"name":"night","path":"backdrop_night.png","x":bw/2,"y":bh/2,"bitmapResolution":RES,"builder_id":nid(),"imageWidth":bw,"imageHeight":bh}],
  "backdropIndex":0,
  "map":{"width":480,"height":360,"mode":"fillRatio"},
  "run":{"width":480,"height":360},
@@ -60,9 +81,9 @@ index={
  "physics":False,"autoSetCollisionLayer":True,"layerSortMode":"",
  "audioAttenuation":0,"audioMaxDistance":768,
  "zorder":order+[mon('monitorScore','分数','score',-232,172),mon('monitorCoins','金币','coins',-120,172),
-                 mon('monitorBest','最高分','best',-8,172),mon('monitorBoost','冲刺','boostLeft',120,172,False)],
+                 mon('monitorBest','最高分','best',-8,172),mon('monitorBoost','冲刺','boostLeft',120,172,False),mon('monitorWallet','钱包','wallet',120,172),mon('monitorShield','护盾','runShield',-232,146,False),mon('monitorMul','金币倍数','coinMul',-120,146,False)],
  "builder_spriteOrder":[S[n]['builder_id'] for n in order],
- "builder_soundOrder":[],
+ "builder_soundOrder":[SND[k]["builder_id"] for k in SND],
  "maxFPS":60,
 }
 json.dump(index, open(P+'assets/index.json','w'), ensure_ascii=False, indent=2)

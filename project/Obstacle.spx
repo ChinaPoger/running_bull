@@ -101,6 +101,9 @@ onCloned data => {
 	setSize laneScale(myLane)
 	inFront = false
 	hitDone = false
+	if curMap == 2 {
+		setGraphicEffect BrightnessEffect, -30 // 夜晚地图：障碍也暗一点
+	}
 	updateDepth
 	for state == 1 {
 		px -= curSpeed
@@ -109,7 +112,10 @@ onCloned data => {
 			show
 		}
 		updateDepth
-		if !hitDone && myLane == bullLane && absf(px-bullX) < hitWidth() {
+		if reviveClear > 0 && px < bullX+220 && px > bullX-90 {
+			deleteThisClone // 复活时清掉大角牛附近的障碍
+		}
+		if !hitDone && !frozen && myLane == bullLane && absf(px-bullX) < hitWidth() {
 			blocked := true
 			if category() == 0 {
 				blocked = jumpH < 28
@@ -117,11 +123,14 @@ onCloned data => {
 				blocked = !sliding
 			}
 			if blocked {
-				if boostTime > 0 {
-					smash
+				if boostTime > 0 || invT > 0 {
+					smash // 冲刺 / 复活后无敌 / 护盾：撞飞障碍
 				} else if part == 0 {
-					hitDone = true
-					gameOver()
+					if onHit() {
+						smash // 护盾挡住了
+					} else {
+						hitDone = true // 进入复活选择或游戏结束
+					}
 				}
 			}
 		}

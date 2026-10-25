@@ -1,0 +1,17 @@
+// 右下角「商店」按钮（v4）：标题页和结算页显示（点击判定在舞台的 pollPointer 里）
+
+onStart => {
+	setXYpos 190, -152
+	hide
+	for {
+		if state == 0 || (state == 2 && overFrames > 20) {
+			if !visible {
+				show
+				setLayer Front
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

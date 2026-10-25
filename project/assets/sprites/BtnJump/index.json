@@ -1,0 +1,31 @@
+{
+  "heading": 90,
+  "x": 208,
+  "y": -148,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 58.0,
+      "y": 58.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "btn",
+      "path": "btn.png",
+      "builder_id": "u4NAC6w0f4dkAXc0BBJ8x",
+      "imageWidth": 116,
+      "imageHeight": 116
+    }
+  ],
+  "builder_id": "dRhrEWOiq3Caf9WS60CnS"
+}
