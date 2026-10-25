@@ -535,16 +535,14 @@
     renderAuth();
   }
 
-  /**
-   * Future: redirect to WeChat OAuth (snsapi_userinfo), backend exchanges code → openid.
-   * On GitHub Pages there is no backend, so we only mock.
-   */
+  /** 微信内跳到公众号网页授权。没接上时 sync.js 会说明原因，这里不再假装登录。 */
   function beginWeChatLogin() {
     if (typeof window.__RB_WECHAT_OAUTH === "function") {
       window.__RB_WECHAT_OAUTH();
       return;
     }
-    openLoginModal();
+    const note = document.getElementById("wx-note");
+    if (note) note.textContent = "微信登录还没接上。可以先游客试玩。";
   }
 
   function openLoginModal() {
@@ -592,6 +590,7 @@
     try {
       localStorage.setItem("rb_mobile_logged_out", "1");
     } catch (e) {}
+    if (typeof window.__RB_WECHAT_LOGOUT === "function") window.__RB_WECHAT_LOGOUT();
     renderLeaderboards();
   }
 
@@ -2334,6 +2333,7 @@
         playSec: sessionPlaySec,
         distance: distance,
         mode: mode,
+        hero: heroKind,
       });
     }
     const st = loadLotteryState();
@@ -5281,6 +5281,8 @@
   window.addEventListener("orientationchange", () => setTimeout(resize, 120));
 
   if (btnWechat) btnWechat.addEventListener("click", beginWeChatLogin);
+  const btnGuestNick = document.getElementById("btn-guest-nick");
+  if (btnGuestNick) btnGuestNick.addEventListener("click", openLoginModal);
   if (btnLogout) btnLogout.addEventListener("click", logout);
   if (btnLoginConfirm) {
     btnLoginConfirm.addEventListener("click", () => confirmMockLogin(false));
@@ -5314,13 +5316,13 @@
     try {
       if (localStorage.getItem("rb_mobile_logged_out") === "1") return;
     } catch (e) {}
-    if (currentUser) return;
+    if (currentUser && !u.wechat) return;
     saveUser({
-      id: "srv_" + u.id,
+      id: u.wechat ? "wx_" + u.id : "srv_" + u.id,
       nickname: String(u.nickname).slice(0, 16),
-      avatar: "",
-      provider: "server",
-      boundWeChat: false,
+      avatar: String(u.avatar || "").slice(0, 300),
+      provider: u.wechat ? "wechat" : "server",
+      boundWeChat: !!u.wechat,
     });
     renderLeaderboards();
   };

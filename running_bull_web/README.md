@@ -57,8 +57,7 @@ PUBLIC_URL=http://127.0.0.1:3000 python3 server.py
 - **充值是假的**：真充值要接支付 SDK（微信支付 / 支付宝等），由支付平台回调服务器确认到账后再发金币；
   在国内上线有内购的游戏还需要先拿到**版号**等合规手续。本原型都没做。
 - **广告是假的**：真广告要接广告 SDK（比如微信小游戏的激励视频广告），以广告平台的“播放完成”回调为准再复活。本原型没接。
-- **账号很简单**：只靠设备号识别，换浏览器或清缓存就是新号；没有手机号 / 微信登录、没有接口签名和限流。
-  正式上线前要加真正的登录和鉴权。
+- **横版账号仍很简单**：默认靠设备号。竖屏可以另外开微信公众号网页授权（见「四.2」），不配密钥时保持关闭。没有接口签名和限流。
 - 防作弊只是按时间封顶，懂行的人仍然可以伪造请求。
 - 没有背景音乐。根路径的网页是横屏设计，竖屏会缩得很小；竖屏请打开 `/mobile-web/`（见下一节）。
 
@@ -79,6 +78,39 @@ python3 server.py
 - 设备号用横版同一个 `rb_device`，开局 `POST /api/runs`，结算 `POST /api/runs/{id}/finish`，请求体带 `board: "portrait"`。
 - 本局金币计入共用钱包（仍按服务器的每秒上限封顶）。竖屏分数**不**写入全服 `best`，本机得分榜留在 `localStorage`，避免和横版计分互相覆盖。
 - 地址栏 `?invite=` 只在这个设备第一次建号时生效，规则和横版一样。
+- 每局结束会把竖屏分数、金币、距离、时长、角色、地图写进 `runs`（`board=portrait`）。大厅「我的竖屏记录」读 `GET /api/history`。这些记录在数据库里，重启服务还在。竖屏分数不写入全服 `best`。
+
+## 四.2 微信登录（公众号网页授权）
+
+竖屏页的「微信登录」走**微信公众号网页授权**，默认 `snsapi_userinfo`（在微信内打开才能授权，能拿到 openid，授权后还有昵称和头像）。没有接开放平台网站应用扫码，也没有在代码里写 AppID / AppSecret。
+
+服务器要配的环境变量（见 `deploy/env.example`）：
+
+| 变量 | 作用 |
+|---|---|
+| `WECHAT_APP_ID` | 公众号 AppID |
+| `WECHAT_APP_SECRET` | 公众号 AppSecret，只放在服务器的 `deploy/env` |
+| `WECHAT_REDIRECT_URI` | 授权回调，默认 `https://bull.lingecho.com/api/wechat/callback` |
+| `WECHAT_OAUTH_SCOPE` | 默认 `snsapi_userinfo`。未认证公众号如果不能拉用户信息，改成 `snsapi_base` |
+
+公众平台里要做的（开发者自己填，仓库里没有这些值）：
+
+1. 用一个**已认证的服务号**（或当前账号允许网页授权的公众号）。订阅号未认证时，常常只能用 `snsapi_base`。
+2. 「设置与开发 → 公众号设置 → 功能设置 → 网页授权域名」填 `bull.lingecho.com`（不要带 `https://` 和路径）。
+3. 按页面提示把校验文件 `MP_verify_*.txt` 放到网站根目录，也就是 nginx `root` 指向的 `public/`。访问 `https://bull.lingecho.com/MP_verify_xxx.txt` 要能打开。
+4. 授权回调域名通过后，回调地址用 `https://bull.lingecho.com/api/wechat/callback`。nginx 已把 `/api/` 转到本机 3000，不用另加 location。
+5. 把 AppID / AppSecret 写进服务器 `deploy/env`，`sudo systemctl restart running-bull`。
+
+接口：
+
+- `GET /api/wechat/config`：只告诉前端开没开、用的 scope，**不返回** AppSecret。
+- `GET /api/wechat/start?device_id=`：已配置时 302 到微信授权页；没配置时 503。
+- `GET /api/wechat/callback`：用 code 换 openid（以及 snsapi_userinfo 的昵称、头像），绑定账号，种下 HttpOnly cookie `rb_session`，再回到 `/mobile-web/`。
+- `POST /api/wechat/logout`：删掉这次会话和 cookie。
+
+绑定规则：这个 openid 第一次来，就绑到当前游客设备，金币和已经跑过的竖屏记录留在原账号上。openid 以前绑过别的账号时，把这台设备上**已经玩过**的游客进度并进去（空账号上那 100 起始金币不会重复加）。之后请求带这张 cookie 时认微信账号；没有 cookie 时仍用设备号。
+
+不在微信里点「微信登录」不会跳走，页面会提示用微信打开。游客试玩不受影响。
 
 ## 五、切换到 MySQL（线上用）
 
@@ -92,7 +124,7 @@ export DB_HOST=127.0.0.1 DB_PORT=3306 DB_USER=bull DB_PASS=你的密码 DB_NAME=
 ```
 
 MySQL 模式需要装驱动（已用 MariaDB 实测过整套接口）：`pip3 install pymysql`（Ubuntu/Debian 也可以 `apt install python3-pymysql`）。
-表结构在 `schema.mysql.sql`（utf8mb4），服务启动时会自动执行里面的 `CREATE TABLE IF NOT EXISTS`；SQLite 也是由同一份文件自动转换的。
+表结构在 `schema.mysql.sql`（utf8mb4），服务启动时会自动执行里面的 `CREATE TABLE IF NOT EXISTS`；SQLite 也是由同一份文件自动转换的。已经在跑的库不会因为 `CREATE TABLE IF NOT EXISTS` 长出新列，所以启动时 `db.py` 的 `migrate()` 会给 `runs` 补上 `board`、`mode`、`hero`、`distance`、`play_ms`、`wx_openid`。新表 `wechat_users`、`oauth_states` 由建表语句自动补上。不用另跑一条手工 ALTER。
 
 ## 六、部署到 bull.lingecho.com（Ubuntu，MySQL 和后端在同一台机器）
 
@@ -159,7 +191,12 @@ sudo nginx -t && sudo systemctl reload nginx
 | POST | `/runs` | `{use_shield?, use_double?}` | `{run_id, shield, double, user}`，开局并扣掉用到的道具 |
 | POST | `/ads` | `{run_id}` | `{ad_id, seconds, mock:true}`，开始看示意广告 |
 | POST | `/runs/{run_id}/revive` | `{method:"ad", ad_id}` 或 `{method:"coins"}` | `{ok, user}`；每局一次 |
-| POST | `/runs/{run_id}/finish` | `{score, coins, board?}` | `{score, earned, capped, new_record, rank, user}`。`board:"portrait"` 时金币照常入账（仍按秒封顶），但不更新全服 `best`；不带该字段时和以前一样 |
+| POST | `/runs/{run_id}/finish` | `{score, coins, board?, mode?, hero?, distance?, play_ms?}` | `{score, earned, capped, new_record, rank, portrait_best, user}`。`board:"portrait"` 时把本局分数、距离、时长、角色、地图写入 `runs`，金币入账，**不**更新全服 `best`。竖屏分数有单独的每秒上限。不带 `board` 时按横版规则，并记 `board=landscape` |
+| GET | `/history?board=portrait&limit=20` | – | `{board, best, portrait_best, runs:[{id, score, coins, started_at, ended_at, board, mode, hero, distance, play_ms}]}` 当前账号的对局，存在数据库里 |
+| GET | `/wechat/config` | – | `{enabled, scope, reason}` 不返回密钥 |
+| GET | `/wechat/start` | – | 已配置则跳到微信；未配置 503 |
+| GET | `/wechat/callback` | – | 微信回调，成功后回到 `/mobile-web/` |
+| POST | `/wechat/logout` | – | 清除 `rb_session` |
 | GET | `/leaderboard` | – | `{top:[{rank, id, nickname, best, equipped_char}]}` 前 20 |
 | GET | `/invite` | – | `{code, link, count, earned, reward_inviter, reward_invitee}`，`link` = `PUBLIC_URL/?invite=邀请码` |
 
