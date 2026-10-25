@@ -57,7 +57,7 @@ PUBLIC_URL=http://127.0.0.1:3000 python3 server.py
 - **充值是假的**：真充值要接支付 SDK（微信支付 / 支付宝等），由支付平台回调服务器确认到账后再发金币；
   在国内上线有内购的游戏还需要先拿到**版号**等合规手续。本原型都没做。
 - **广告是假的**：真广告要接广告 SDK（比如微信小游戏的激励视频广告），以广告平台的“播放完成”回调为准再复活。本原型没接。
-- **横版账号仍很简单**：默认靠设备号。竖屏可以另外开微信公众号网页授权（见「四.2」），不配密钥时保持关闭。没有接口签名和限流。
+- **账号靠设备号**：横版和竖屏打开页面就用 `rb_device` 自动建号或恢复，不用点登录。公众号微信登录不是现在的入口（接口仍在，不配密钥就关闭，见「四.2」）。没有接口签名和限流。
 - 防作弊只是按时间封顶，懂行的人仍然可以伪造请求。
 - 没有背景音乐。根路径的网页是横屏设计，竖屏会缩得很小；竖屏请打开 `/mobile-web/`（见下一节）。
 
@@ -75,42 +75,40 @@ python3 server.py
 
 和后台的关系：
 
-- 设备号用横版同一个 `rb_device`，开局 `POST /api/runs`，结算 `POST /api/runs/{id}/finish`，请求体带 `board: "portrait"`。
+- 打开页面就会自动登录。设备号是横版同一个 `rb_device`（`localStorage`，并复制一份同名 Cookie）。不需要点按钮、不需要 PIN、也不走微信。
+- 开局 `POST /api/runs`，结算 `POST /api/runs/{id}/finish`，请求体带 `board: "portrait"`。
 - 本局金币计入共用钱包（仍按服务器的每秒上限封顶）。竖屏分数**不**写入全服 `best`，本机得分榜留在 `localStorage`，避免和横版计分互相覆盖。
 - 地址栏 `?invite=` 只在这个设备第一次建号时生效，规则和横版一样。
 - 每局结束会把竖屏分数、金币、距离、时长、角色、地图写进 `runs`（`board=portrait`）。大厅「我的竖屏记录」读 `GET /api/history`。这些记录在数据库里，重启服务还在。竖屏分数不写入全服 `best`。
+- 昵称可以改，改昵称不会换账号。
 
-## 四.2 微信登录（公众号网页授权）
+## 四.2 本机自动登录（设备号）
 
-竖屏页的「微信登录」走**微信公众号网页授权**，默认 `snsapi_userinfo`（在微信内打开才能授权，能拿到 openid，授权后还有昵称和头像）。没有接开放平台网站应用扫码，也没有在代码里写 AppID / AppSecret。
+竖屏和横版的账号键是浏览器里保存的设备号，不是微信。
 
-服务器要配的环境变量（见 `deploy/env.example`）：
+打开 `/mobile-web/` 时：
+
+1. 读 `localStorage` 的 `rb_device`。合法就用它（8–64 位字母、数字、`_`、`-`）。
+2. 本地没有、但 Cookie `rb_device` 里有一份合法的号，就把 Cookie 写回 `localStorage`。两份都在而且不一样时，以 `localStorage` 为准，并回写 Cookie。
+3. 两份都没有：用 `crypto.getRandomValues` 生成 `d` + 32 位十六进制，同时写入 `localStorage` 和 Cookie（`Path=/`，`SameSite=Lax`，一年；https 下再加 `Secure`）。
+4. 立刻 `POST /api/guest`，带上 `device_id`。新号建账号并发起始金币；旧号直接恢复钱包、昵称和竖屏记录。玩家不用再点一次。
+
+同一浏览器配置会一直用这个号，所以金币和「我的竖屏记录」会在。清除本站数据（本地存储和 Cookie 都清掉）之后，页面认不出旧号，会新建一个账号；数据库里的旧号还在，但浏览器已经没有那串字符。只清掉其中一份时，另一份会把设备号补回来。换手机、换浏览器、无痕窗口，各是各的账号。现在没有把多台设备绑成同一个号的入口。
+
+设备号本身就是登录凭据。不要把它贴到别处；拿到这串字符的人可以用它访问这个账号。
+
+请求里还会带 `client_hint`：对 UA、屏幕宽高、语言、时区做的短哈希。服务器把它记在 `users.client_hint`，**不用它查账号**。没有设备号就不会登录，两台设备即使 hint 一样也是两个账号。
+
+公众号网页授权的代码还留在服务器上，默认关闭，竖屏页没有「微信登录」按钮。不配下面的环境变量时，`GET /api/wechat/start` 返回 503。这不是当前的登录方式。
 
 | 变量 | 作用 |
 |---|---|
-| `WECHAT_APP_ID` | 公众号 AppID |
+| `WECHAT_APP_ID` | 公众号 AppID。不填则微信接口关闭 |
 | `WECHAT_APP_SECRET` | 公众号 AppSecret，只放在服务器的 `deploy/env` |
 | `WECHAT_REDIRECT_URI` | 授权回调，默认 `https://bull.lingecho.com/api/wechat/callback` |
-| `WECHAT_OAUTH_SCOPE` | 默认 `snsapi_userinfo`。未认证公众号如果不能拉用户信息，改成 `snsapi_base` |
+| `WECHAT_OAUTH_SCOPE` | 默认 `snsapi_userinfo` |
 
-公众平台里要做的（开发者自己填，仓库里没有这些值）：
-
-1. 用一个**已认证的服务号**（或当前账号允许网页授权的公众号）。订阅号未认证时，常常只能用 `snsapi_base`。
-2. 「设置与开发 → 公众号设置 → 功能设置 → 网页授权域名」填 `bull.lingecho.com`（不要带 `https://` 和路径）。
-3. 按页面提示把校验文件 `MP_verify_*.txt` 放到网站根目录，也就是 nginx `root` 指向的 `public/`。访问 `https://bull.lingecho.com/MP_verify_xxx.txt` 要能打开。
-4. 授权回调域名通过后，回调地址用 `https://bull.lingecho.com/api/wechat/callback`。nginx 已把 `/api/` 转到本机 3000，不用另加 location。
-5. 把 AppID / AppSecret 写进服务器 `deploy/env`，`sudo systemctl restart running-bull`。
-
-接口：
-
-- `GET /api/wechat/config`：只告诉前端开没开、用的 scope，**不返回** AppSecret。
-- `GET /api/wechat/start?device_id=`：已配置时 302 到微信授权页；没配置时 503。
-- `GET /api/wechat/callback`：用 code 换 openid（以及 snsapi_userinfo 的昵称、头像），绑定账号，种下 HttpOnly cookie `rb_session`，再回到 `/mobile-web/`。
-- `POST /api/wechat/logout`：删掉这次会话和 cookie。
-
-绑定规则：这个 openid 第一次来，就绑到当前游客设备，金币和已经跑过的竖屏记录留在原账号上。openid 以前绑过别的账号时，把这台设备上**已经玩过**的游客进度并进去（空账号上那 100 起始金币不会重复加）。之后请求带这张 cookie 时认微信账号；没有 cookie 时仍用设备号。
-
-不在微信里点「微信登录」不会跳走，页面会提示用微信打开。游客试玩不受影响。
+`GET /api/wechat/config` 只返回是否启用和 scope，不返回 AppSecret。页面不会因为这个接口去跳转微信。
 
 ## 五、切换到 MySQL（线上用）
 
@@ -124,7 +122,7 @@ export DB_HOST=127.0.0.1 DB_PORT=3306 DB_USER=bull DB_PASS=你的密码 DB_NAME=
 ```
 
 MySQL 模式需要装驱动（已用 MariaDB 实测过整套接口）：`pip3 install pymysql`（Ubuntu/Debian 也可以 `apt install python3-pymysql`）。
-表结构在 `schema.mysql.sql`（utf8mb4），服务启动时会自动执行里面的 `CREATE TABLE IF NOT EXISTS`；SQLite 也是由同一份文件自动转换的。已经在跑的库不会因为 `CREATE TABLE IF NOT EXISTS` 长出新列，所以启动时 `db.py` 的 `migrate()` 会给 `runs` 补上 `board`、`mode`、`hero`、`distance`、`play_ms`、`wx_openid`。新表 `wechat_users`、`oauth_states` 由建表语句自动补上。不用另跑一条手工 ALTER。
+表结构在 `schema.mysql.sql`（utf8mb4），服务启动时会自动执行里面的 `CREATE TABLE IF NOT EXISTS`；SQLite 也是由同一份文件自动转换的。已经在跑的库不会因为 `CREATE TABLE IF NOT EXISTS` 长出新列，所以启动时 `db.py` 的 `migrate()` 会给 `runs` 补上 `board`、`mode`、`hero`、`distance`、`play_ms`、`wx_openid`，并给 `users` 补上 `client_hint`（软指纹，不参与登录）。新表 `wechat_users`、`oauth_states` 由建表语句自动补上。不用另跑一条手工 ALTER。
 
 ## 六、部署到 bull.lingecho.com（Ubuntu，MySQL 和后端在同一台机器）
 
@@ -174,7 +172,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 - 前缀：`/api`（例如 `https://bull.lingecho.com/api/leaderboard`；旧的 `/api/v1/...` 也能用），请求和返回都是 JSON（UTF-8）
 - 前端默认请求同域名的 `/api`；如果前端和接口不在一个域名，在页面里先设置 `window.API_BASE = 'https://域名/api'`
-- 身份：请求头 `X-Device-Id: 设备号`（8-64 位字母数字、`_`、`-`），也可以放在 body 的 `device_id` 里
+- 身份：请求头 `X-Device-Id: 设备号`（8-64 位字母数字、`_`、`-`），也可以放在 body 的 `device_id` 里。带了设备号就认这个号。`X-Session` 或 body/query 的 `token`（昵称 PIN / XBuilder）仍然优先。Cookie `rb_session` 只在请求没有设备号时才用。
 - 出错返回 `{"error": "中文说明"}`，HTTP 状态码：400 参数错、401 没账号、402 金币不够、404 不存在、409 状态冲突
 - 已开启 CORS（`Access-Control-Allow-Origin: *`），别的网页 / 客户端可以直接调用
 
@@ -182,7 +180,7 @@ sudo nginx -t && sudo systemctl reload nginx
 |---|---|---|---|
 | GET | `/health` | – | `{ok, db}` |
 | GET | `/catalog` | – | 角色、地图、道具、充值档位、规则（价格以这里为准） |
-| POST | `/guest` | `{device_id, nickname?, invite_code?}` | `{created, invite, user}`；新设备才会处理邀请码 |
+| POST | `/guest` | `{device_id, nickname?, invite_code?, client_hint?}` | `{created, invite, user}`；新设备才会处理邀请码。`client_hint` 只写入该账号，不用于查找 |
 | GET | `/me` | – | `{user}` |
 | POST | `/me/nickname` | `{nickname}` | `{user}` |
 | POST | `/me/equip` | `{item_id}` | `{user}`，只能装备已拥有的角色 / 地图 |

@@ -2,7 +2,8 @@
 -- 用法：mysql -u bull -p running_bull < schema.mysql.sql
 -- （server.py 在 MySQL 模式下启动时也会自动执行本文件里的 CREATE TABLE IF NOT EXISTS）
 -- 已有库不会因为 CREATE TABLE IF NOT EXISTS 而加列。runs 的 board/mode/hero/distance/play_ms/wx_openid
--- 由 db.py 的 migrate() 在启动时 ALTER TABLE 补上（SQLite 和 MySQL 都是）。新库直接用下面的建表语句。
+-- 以及 users.client_hint 由 db.py 的 migrate() 在启动时 ALTER TABLE 补上（SQLite 和 MySQL 都是）。
+-- client_hint 是 UA/屏幕的短哈希，只作旁路记录，不能用来查找账号。新库直接用下面的建表语句。
 
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   equipped_char VARCHAR(32) NOT NULL DEFAULT 'bull',
   equipped_bg VARCHAR(32) NOT NULL DEFAULT 'farm',
   created_at BIGINT NOT NULL,
+  client_hint VARCHAR(64) NOT NULL DEFAULT '',
   INDEX idx_best (best)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

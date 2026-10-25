@@ -1,51 +1,82 @@
 /* 竖屏跑酷 ↔ 现有 /api
-   游客设备号和横版共用钱包。结算把分数、金币、距离、时长、角色、地图写入 runs
-   （board=portrait，不改全服 best）。微信登录只在微信内、且服务器配了 AppID/Secret 时跳转。
+   打开页面就用设备号 rb_device 自动建号或恢复账号（和横版共用钱包）。
+   身份是这串号，不是微信。结算把分数、金币、距离、时长、角色、地图写入 runs
+   （board=portrait，不改全服 best）。client_hint 只是旁路记录，不能单独登录。
 */
 (function () {
   "use strict";
 
   const BASE = (window.API_BASE || "/api").replace(/\/$/, "");
-  let dev = localStorage.getItem("rb_device");
-  if (!dev || !/^[A-Za-z0-9_-]{8,64}$/.test(dev)) {
-    const a = new Uint8Array(12);
-    if (crypto.getRandomValues) crypto.getRandomValues(a);
-    else for (let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256);
-    dev = "d" + Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
-    localStorage.setItem("rb_device", dev);
+  const DEV_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
+  function readCookie(name) {
+    const parts = String(document.cookie || "").split(";");
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i].trim();
+      const eq = p.indexOf("=");
+      if (eq > 0 && p.slice(0, eq) === name) {
+        try { return decodeURIComponent(p.slice(eq + 1)); } catch (e) { return p.slice(eq + 1); }
+      }
+    }
+    return "";
   }
 
+  function writeDeviceCookie(id) {
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = "rb_device=" + encodeURIComponent(id) + "; Path=/; Max-Age=31536000; SameSite=Lax" + secure;
+  }
+
+  function newDeviceId() {
+    const a = new Uint8Array(16);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(a);
+    else for (let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256);
+    return "d" + Array.from(a, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+  }
+
+  function loadDeviceId() {
+    let stored = "";
+    try { stored = localStorage.getItem("rb_device") || ""; } catch (e) {}
+    const fromCookie = readCookie("rb_device");
+    let dev = "";
+    if (DEV_RE.test(stored)) dev = stored;
+    else if (DEV_RE.test(fromCookie)) dev = fromCookie;
+    else dev = newDeviceId();
+    try { localStorage.setItem("rb_device", dev); } catch (e) {}
+    writeDeviceCookie(dev);
+    return dev;
+  }
+
+  function clientHint() {
+    let raw = "";
+    try {
+      raw = [
+        navigator.userAgent || "",
+        (screen && screen.width) + "x" + (screen && screen.height),
+        String(window.devicePixelRatio || ""),
+        navigator.language || "",
+        String(new Date().getTimezoneOffset()),
+      ].join("|");
+    } catch (e) {
+      raw = "na";
+    }
+    let h1 = 2166136261;
+    let h2 = 2166136261 ^ 0x811c9dc5;
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw.charCodeAt(i);
+      h1 ^= c;
+      h1 = Math.imul(h1, 16777619);
+      h2 ^= c;
+      h2 = Math.imul(h2, 16777619);
+    }
+    const hex = function (n) { return (n >>> 0).toString(16).padStart(8, "0"); };
+    return ("h" + hex(h1) + hex(h2)).slice(0, 32);
+  }
+
+  const dev = loadDeviceId();
   let serverUser = null;
   let active = null;
   let seq = 0;
-  let wxConfig = { enabled: false, reason: "" };
-  let wxFlag = "";
-
-  function inWeChat() {
-    return /MicroMessenger/i.test(navigator.userAgent || "");
-  }
-
-  function paintWx() {
-    const note = document.getElementById("wx-note");
-    const btn = document.getElementById("btn-wechat-login");
-    if (btn) btn.textContent = serverUser && serverUser.wechat ? "微信已登录" : "微信登录";
-    if (!note) return;
-    if (serverUser && serverUser.wechat) {
-      note.textContent = "已绑定微信 · " + (serverUser.nickname || "微信用户") + " · 成绩记在这个账号上";
-      return;
-    }
-    if (wxFlag === "ok") note.textContent = "微信登录成功";
-    else if (wxFlag === "denied") note.textContent = "已取消微信授权，可以继续游客试玩";
-    else if (wxFlag === "state") note.textContent = "登录状态过期了，请再点一次微信登录";
-    else if (wxFlag === "exchange" || wxFlag === "bind") note.textContent = "微信登录失败，请再试一次。游客可以继续玩";
-    else if (wxFlag === "config" || !wxConfig.enabled) {
-      note.textContent = "微信登录未开通：" + (wxConfig.reason || "服务器未配置 WECHAT_APP_ID / WECHAT_APP_SECRET") + "。现在可以游客试玩。";
-    } else if (!inWeChat()) {
-      note.textContent = "请在微信里打开本页后再点微信登录。现在可以游客试玩。";
-    } else {
-      note.textContent = "点微信登录后，金币和竖屏成绩会跟这个微信号走。";
-    }
-  }
+  let pendingNick = "";
 
   function call(method, path, body) {
     return fetch(BASE + path, {
@@ -64,15 +95,38 @@
     const el = document.getElementById("wallet-line");
     if (!el) return;
     if (!serverUser) {
-      el.textContent = extra || "离线可玩 · 连上服务器后金币会计入钱包";
+      el.textContent = extra || "离线可玩 · 连上服务器后金币会计入本机账号";
       return;
     }
     el.textContent =
-      "钱包 💰 " +
+      (serverUser.nickname || "本机账号") +
+      " · 钱包 💰 " +
       serverUser.coins +
       " · 横版最高 " +
       serverUser.best +
       (extra ? " · " + extra : "");
+  }
+
+  function applyUser(user) {
+    if (pendingNick && user && pendingNick !== user.nickname) return;
+    if (typeof window.__RB_APPLY_SERVER_USER === "function") window.__RB_APPLY_SERVER_USER(user);
+  }
+
+  function pushNick() {
+    if (!pendingNick || !serverUser) return;
+    const nick = pendingNick;
+    call("POST", "/me/nickname", { nickname: nick })
+      .then(function (r) {
+        if (pendingNick !== nick) {
+          pushNick();
+          return;
+        }
+        pendingNick = "";
+        serverUser = r.user;
+        applyUser(r.user);
+        paintWallet("昵称已同步");
+      })
+      .catch(function () {});
   }
 
   function finishRun(run, info) {
@@ -90,6 +144,7 @@
     })
       .then((r) => {
         serverUser = r.user;
+        applyUser(r.user);
         paintWallet();
         const note = document.getElementById("over-sync");
         if (!note || active !== run) return;
@@ -127,6 +182,7 @@
         mine.id = r.run_id;
         if (r.user) {
           serverUser = r.user;
+          applyUser(r.user);
           paintWallet();
         }
         if (mine.pending) finishRun(mine, mine.pending);
@@ -146,12 +202,8 @@
 
   window.__RB_ON_NICK = function (user) {
     if (!user || !user.nickname) return;
-    call("POST", "/me/nickname", { nickname: String(user.nickname).slice(0, 16) })
-      .then((r) => {
-        serverUser = r.user;
-        paintWallet("昵称已同步");
-      })
-      .catch(() => {});
+    pendingNick = String(user.nickname).slice(0, 16);
+    pushNick();
   };
 
   function renderHistory(data) {
@@ -178,59 +230,27 @@
 
   function adopt(user, extra) {
     serverUser = user;
-    if (typeof window.__RB_APPLY_SERVER_USER === "function") window.__RB_APPLY_SERVER_USER(user);
+    if (pendingNick && pendingNick !== (user && user.nickname)) pushNick();
+    else applyUser(user);
     paintWallet(extra || "");
-    paintWx();
     loadHistory();
   }
 
-  window.__RB_WECHAT_OAUTH = function () {
-    paintWx();
-    if (!wxConfig.enabled) {
-      const note = document.getElementById("wx-note");
-      if (note) note.textContent = "微信登录还不能用：" + (wxConfig.reason || "服务器未配置 WECHAT_APP_ID / WECHAT_APP_SECRET") + "。游客可以继续玩。";
-      return;
-    }
-    if (!inWeChat()) {
-      const note = document.getElementById("wx-note");
-      if (note) note.textContent = "请用微信打开这个页面后再点微信登录。当前浏览器可以游客试玩。";
-      return;
-    }
-    const invite = new URLSearchParams(location.search).get("invite") || "";
-    location.href = "/api/wechat/start?device_id=" + encodeURIComponent(dev) + (invite ? "&invite=" + encodeURIComponent(invite) : "");
-  };
-
-  window.__RB_WECHAT_LOGOUT = function () {
-    call("POST", "/wechat/logout", {}).finally(function () {
-      serverUser = serverUser ? Object.assign({}, serverUser, { wechat: false }) : serverUser;
-      paintWx();
-    });
-  };
-
   const params = new URLSearchParams(location.search);
   const invite = params.get("invite") || "";
-  wxFlag = params.get("wx") || "";
-  if (wxFlag === "ok") {
-    try { localStorage.removeItem("rb_mobile_logged_out"); } catch (e) {}
-  }
-  if (wxFlag) {
+  if (params.has("wx")) {
     params.delete("wx");
     const next = params.toString();
     history.replaceState(null, "", location.pathname + (next ? "?" + next : "") + location.hash);
   }
 
-  call("GET", "/wechat/config")
-    .then(function (c) { wxConfig = c || wxConfig; paintWx(); })
-    .catch(function () { paintWx(); });
+  const wechatBtn = document.getElementById("btn-wechat-login");
+  if (wechatBtn) wechatBtn.classList.add("hidden");
 
-  call("GET", "/me")
-    .then(function (r) { adopt(r.user, ""); })
-    .catch(function () {
-      call("POST", "/guest", { device_id: dev, invite_code: invite })
-        .then(function (r) {
-          adopt(r.user, r.created ? "新账号送了起始金币" : "");
-          if (invite) history.replaceState(null, "", location.pathname + location.hash);
-        })
-        .catch(function () { paintWallet(); });
-    });
+  call("POST", "/guest", { device_id: dev, invite_code: invite, client_hint: clientHint() })
+    .then(function (r) {
+      adopt(r.user, r.created ? "新的本机账号，送了起始金币" : "已恢复本机账号");
+      if (invite) history.replaceState(null, "", location.pathname + location.hash);
+    })
+    .catch(function () { paintWallet(); });
 })();
