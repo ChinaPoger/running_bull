@@ -67,6 +67,9 @@
   const rewardedAdCompleteBtn = document.getElementById("rewarded-ad-complete");
   const rewardedAdSkipBtn = document.getElementById("rewarded-ad-skip");
   const rewardToastEl = document.getElementById("reward-toast");
+  const opsHintEl = document.getElementById("ops-hint");
+  const btnOpsHint = document.getElementById("btn-ops-hint");
+  const opsHintPowersEl = document.getElementById("ops-hint-powers");
 
   const W = 420;
   const H = 740;
@@ -142,6 +145,28 @@
   const CHILL_SPAWN_BASE = 2.65;
   const CHILL_SPAWN_MIN = 1.85;
   const CHILL_SPAWN_DIST_DIV = 2800;
+  /**
+   * Difficulty uses the same start/peak constants as the old distance curves,
+   * but the input is elapsed run time and it stops rising at 120s.
+   * Smoothstep: slope is 0 at t=0 (no step) and 0 at the cap (hold).
+   */
+  function difficultyCurve(playSec, spec) {
+    const cap = 120;
+    const raw = Number(playSec) || 0;
+    const t = Math.max(0, Math.min(cap, raw));
+    const u = t / cap;
+    const k = u * u * (3 - 2 * u);
+    const speedDist = (spec.speedMax - spec.speedStart) / spec.speedRamp;
+    const spawnDist = (spec.spawnBase - spec.spawnMin) * spec.spawnDiv;
+    const d = Math.max(speedDist, spawnDist) * k;
+    return {
+      k: k,
+      speed: Math.min(spec.speedMax, spec.speedStart + d * spec.speedRamp),
+      interval: Math.max(spec.spawnMin, spec.spawnBase - d / spec.spawnDiv),
+      extraChance: k * 0.7,
+      held: raw >= cap,
+    };
+  }
   /** Chill score: 10 pts / surviving second + 1 per coin (bonus only). */
   const CHILL_TIME_PTS = 10;
   const CHILL_COIN_BONUS = 1;
@@ -194,6 +219,9 @@
   let runPhase = 0;
   let animTime = 0;
   let sessionPlaySec = 0;
+  /** First-run 操作提示 is up; the run is paused underneath. */
+  let opsHintOpen = false;
+  let opsHintMem = false;
   /** @type {{id:string,nickname:string,avatar:string,provider:string}|null} */
   let currentUser = null;
 
@@ -504,8 +532,51 @@
     return token;
   }
 
+  function opsHintStorageKey() {
+    let dev = "";
+    try { dev = localStorage.getItem("rb_device") || ""; } catch (e) {}
+    dev = String(dev).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+    return dev ? "rb_ops_hint_v1:" + dev : "rb_ops_hint_v1";
+  }
+
+  function opsHintSeen() {
+    if (opsHintMem) return true;
+    try { return localStorage.getItem(opsHintStorageKey()) === "1"; } catch (e) { return false; }
+  }
+
+  function markOpsHintSeen() {
+    opsHintMem = true;
+    try { localStorage.setItem(opsHintStorageKey(), "1"); } catch (e) {}
+  }
+
+  function hideOpsHint() {
+    opsHintOpen = false;
+    if (opsHintEl) opsHintEl.classList.add("hidden");
+  }
+
+  function dismissOpsHint() {
+    markOpsHintSeen();
+    hideOpsHint();
+  }
+
+  /** First start only. Dismiss and this start both persist “seen”. */
+  function presentOpsHint() {
+    if (opsHintSeen()) {
+      hideOpsHint();
+      return;
+    }
+    markOpsHintSeen();
+    if (opsHintPowersEl) {
+      const shop = document.getElementById("run-shop");
+      opsHintPowersEl.hidden = !(shop && shop.querySelector("[data-shop-use]"));
+    }
+    opsHintOpen = true;
+    if (opsHintEl) opsHintEl.classList.remove("hidden");
+  }
+
   function showHome() {
     cancelHomeReturn();
+    hideOpsHint();
     running = false;
     dead = false;
     deathFx = false;
@@ -526,6 +597,7 @@
 
   function showSelect() {
     cancelHomeReturn();
+    hideOpsHint();
     running = false;
     dead = false;
     deathFx = false;
@@ -914,6 +986,7 @@
     const syncNote = document.getElementById("over-sync");
     if (syncNote) syncNote.textContent = "";
     if (typeof window.__RB_ON_START === "function") window.__RB_ON_START();
+    presentOpsHint();
   }
 
   function updateHud() {
@@ -950,6 +1023,7 @@
     }
     if (hudInvulnPill) {
       hudInvulnPill.classList.toggle("active", active);
+      hudInvulnPill.classList.toggle("is-idle", !active);
     }
     if (btnInvulnCount) {
       btnInvulnCount.textContent = active
@@ -970,7 +1044,7 @@
   }
 
   function activateInvuln() {
-    if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (!running || dead || deathFx || isRewardedAdOpen() || opsHintOpen) return;
     if (isInvulnerable()) return;
     if (invulnCharges <= 0) return;
     invulnCharges -= 1;
@@ -1006,6 +1080,7 @@
     if (hudBoostPill) {
       hudBoostPill.classList.toggle("active", active);
       hudBoostPill.classList.toggle("cooling", cooling);
+      hudBoostPill.classList.toggle("is-idle", !active && !cooling);
     }
     if (btnBoostCount) {
       if (active) btnBoostCount.textContent = boostT.toFixed(1) + "s";
@@ -1036,7 +1111,7 @@
   }
 
   function activateBoost() {
-    if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (!running || dead || deathFx || isRewardedAdOpen() || opsHintOpen) return;
     if (isBoosting() || boostCd > 0) return;
     if (boostCharges <= 0) return;
     boostCharges -= 1;
@@ -1069,7 +1144,7 @@
   }
 
   function changeLane(dir) {
-    if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (!running || dead || deathFx || isRewardedAdOpen() || opsHintOpen) return;
     if (boostLockT > 0) return;
     const next = Math.max(0, Math.min(LANES - 1, player.lane + dir));
     if (next === player.lane) return;
@@ -1081,7 +1156,7 @@
   }
 
   function jump() {
-    if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (!running || dead || deathFx || isRewardedAdOpen() || opsHintOpen) return;
     if (player.jumping) {
       // Queue a follow-up if pressed near landing.
       if (player.jumpT >= JUMP_DURATION - JUMP_BUFFER) {
@@ -1133,7 +1208,7 @@
   }
 
   function slide() {
-    if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (!running || dead || deathFx || isRewardedAdOpen() || opsHintOpen) return;
     if (player.sliding) return;
     // Hard-cut: cancel jump pose instantly (no blend).
     player.jumping = false;
@@ -1321,7 +1396,7 @@
   }
 
   function onUsePower(item) {
-    if (!running || dead || deathFx || isRewardedAdOpen()) {
+    if (!running || dead || deathFx || isRewardedAdOpen() || opsHintOpen) {
       toastShop("开跑后才能用");
       return;
     }
@@ -1364,7 +1439,7 @@
   }
 
   function fireBomb() {
-    if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (!running || dead || deathFx || isRewardedAdOpen() || opsHintOpen) return;
     if (bombCd > 0) return;
     // 飞机大战：导弹 = 当前道敌人 -5 HP（非秒杀大怪）。
     if (mode === "plane") {
@@ -2139,6 +2214,7 @@
     } catch (e) {}
     hideScreen(homeEl);
     hideScreen(overlay);
+    hideOpsHint();
     overEl.classList.remove("hidden");
     overEl.classList.add("show-over");
     scheduleHomeReturn();
@@ -2212,12 +2288,30 @@
       return;
     }
     if (!running) return;
+    if (opsHintOpen) return;
 
-    if (mode === "chill") {
-      speed = Math.min(CHILL_SPEED_MAX, CHILL_SPEED_START + distance * CHILL_SPEED_RAMP);
-    } else {
-      speed = Math.min(SPEED_MAX, SPEED_START + distance * SPEED_RAMP);
-    }
+    sessionPlaySec += dt;
+    const diff = difficultyCurve(
+      sessionPlaySec,
+      mode === "chill"
+        ? {
+            speedStart: CHILL_SPEED_START,
+            speedMax: CHILL_SPEED_MAX,
+            speedRamp: CHILL_SPEED_RAMP,
+            spawnBase: CHILL_SPAWN_BASE,
+            spawnMin: CHILL_SPAWN_MIN,
+            spawnDiv: CHILL_SPAWN_DIST_DIV,
+          }
+        : {
+            speedStart: SPEED_START,
+            speedMax: SPEED_MAX,
+            speedRamp: SPEED_RAMP,
+            spawnBase: SPAWN_BASE,
+            spawnMin: SPAWN_MIN,
+            spawnDiv: SPAWN_DIST_DIV,
+          }
+    );
+    speed = diff.speed;
     if (boostT > 0) {
       boostT -= dt;
       if (boostT <= 0) {
@@ -2239,7 +2333,6 @@
     distance += (moveSpeed * dt) / 18;
     // Steady stride: base cadence + light speed coupling (less "panic legs").
     runPhase += dt * (2.15 + moveSpeed * 0.0055);
-    sessionPlaySec += dt;
 
     const laneLerp = isBoosting() ? BOOST_LANE_LERP : LANE_LERP;
     player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * laneLerp);
@@ -2385,12 +2478,10 @@
 
     spawnAcc -= dt;
     coinAcc -= dt;
-    const spawnInterval =
-      mode === "chill"
-        ? Math.max(CHILL_SPAWN_MIN, CHILL_SPAWN_BASE - distance / CHILL_SPAWN_DIST_DIV)
-        : Math.max(SPAWN_MIN, SPAWN_BASE - distance / SPAWN_DIST_DIV);
+    const spawnInterval = diff.interval;
     if (spawnAcc <= 0) {
       spawnObstacle();
+      if (Math.random() < diff.extraChance) spawnObstacle();
       spawnAcc =
         spawnInterval *
         (mode === "chill" ? 1.05 + Math.random() * 0.55 : 0.9 + Math.random() * 0.55);
@@ -4983,6 +5074,12 @@
       startOnce();
     });
   }
+  bindTap(btnOpsHint, dismissOpsHint);
+  if (opsHintEl) {
+    opsHintEl.addEventListener("click", (ev) => {
+      if (ev.target === opsHintEl) dismissOpsHint();
+    });
+  }
   bindTap(btnHomeStart, showSelect);
   bindTap(btnBackHome, showHome);
   bindTap(btnGoHome, showHome);
@@ -4999,7 +5096,7 @@
   let activePointerId = null;
 
   function onSwipeAxis(dx, dy) {
-    if (!running || dead || swipeUsed) return false;
+    if (!running || dead || swipeUsed || opsHintOpen) return false;
     if (Math.abs(dx) >= SWIPE_AXIS_MIN && Math.abs(dx) > Math.abs(dy) * 0.85) {
       changeLane(dx > 0 ? 1 : -1);
       // One gesture → one lane change; lock until pointerup (avoids double-lane swipe).
@@ -5060,7 +5157,7 @@
     const dx = ev.clientX - touchStartX;
     const dy = ev.clientY - touchStartY;
     const dtMs = touchStartT ? performance.now() - touchStartT : 9999;
-    if (running && !dead && touchStartT && dtMs < SWIPE_TAP_MS && Math.hypot(dx, dy) < SWIPE_TAP_MAX) {
+    if (running && !dead && !opsHintOpen && touchStartT && dtMs < SWIPE_TAP_MS && Math.hypot(dx, dy) < SWIPE_TAP_MAX) {
       const rect = canvas.getBoundingClientRect();
       if (ev.clientY - rect.top < rect.height * 0.55) jump();
     }
@@ -5090,6 +5187,13 @@
   );
 
   window.addEventListener("keydown", (ev) => {
+    if (opsHintOpen) {
+      if (ev.key === "Enter" || ev.key === "Escape") {
+        ev.preventDefault();
+        dismissOpsHint();
+      }
+      return;
+    }
     if (ev.repeat) return;
     switch (ev.key) {
       case "ArrowLeft":

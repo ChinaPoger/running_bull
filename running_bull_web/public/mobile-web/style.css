@@ -140,127 +140,53 @@ html, body {
   touch-action: none;
 }
 
-#touch-layer {
+/* One-time 操作提示. Not the old always-on control strip. */
+#ops-hint {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 6;
-  display: grid;
-  grid-template-columns: 0.75fr 0.9fr 0.75fr 0.65fr 0.65fr 0.65fr;
-  gap: 8px;
-  padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
+  inset: 0;
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 18px;
+  background: rgba(5, 18, 40, 0.62);
+  backdrop-filter: blur(3px);
 }
-
-.touch-btn {
-  appearance: none;
-  border: 1px solid rgba(255,255,255,0.22);
+#ops-hint.hidden {
+  display: none;
+}
+.ops-hint-card {
+  width: min(88vw, 320px);
+  background: #fff;
+  color: #1a2030;
   border-radius: 18px;
-  height: 64px;
+  padding: 22px 18px 16px;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+.ops-hint-card h2 {
+  margin: 0 0 10px;
   font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.12));
-  backdrop-filter: blur(8px);
-  box-shadow: 0 5px 0 rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.25);
-  cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.08s;
+  color: #1a6fd4;
+}
+.ops-hint-card ul {
+  margin: 0 0 14px;
+  padding: 0 0 0 1.1em;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #1e293b;
+}
+.ops-hint-card li {
+  margin: 0 0 6px;
+}
+.ops-hint-card .primary {
+  width: 100%;
 }
 
-.touch-btn:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.25);
-}
-
-.touch-btn.jump {
-  background: rgba(255, 170, 0, 0.9);
-  color: #1a1000;
-  font-size: 24px;
-}
-
-.touch-btn.bomb {
-  background: rgba(220, 50, 50, 0.9);
-  font-size: 26px;
-}
-
-#app[data-theme="space"] .touch-btn.jump {
-  background: rgba(255, 140, 200, 0.92);
-  color: #4a1040;
-}
-
-#app[data-theme="space"] .touch-btn.bomb {
-  background: rgba(160, 100, 255, 0.92);
-}
-
-.touch-btn.bomb:disabled,
-.touch-btn.bomb.cooling {
-  opacity: 0.45;
-}
-
-.touch-btn.invuln {
-  background: linear-gradient(180deg, rgba(80, 180, 255, 0.95), rgba(40, 100, 220, 0.92));
-  font-size: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  line-height: 1.05;
-  position: relative;
-}
-.touch-btn.invuln .invuln-emoji { font-size: 22px; }
-.touch-btn.invuln .invuln-count {
-  font-size: 12px;
-  font-weight: 800;
-  opacity: 0.95;
-}
-.touch-btn.invuln:disabled,
-.touch-btn.invuln.empty {
-  opacity: 0.4;
-}
-.touch-btn.invuln.active {
-  background: linear-gradient(180deg, #ffe566, #ffaa00);
-  color: #3a2000;
-  box-shadow: 0 0 0 3px rgba(255, 200, 60, 0.55), 0 5px 0 rgba(0,0,0,0.28);
-  animation: invuln-pulse 0.55s ease-in-out infinite alternate;
-}
-@keyframes invuln-pulse {
-  from { filter: brightness(1); }
-  to { filter: brightness(1.18); }
-}
-
-.touch-btn.boost {
-  background: linear-gradient(180deg, rgba(255, 210, 80, 0.95), rgba(230, 120, 20, 0.92));
-  color: #2a1800;
-  font-size: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  line-height: 1.05;
-  position: relative;
-}
-.touch-btn.boost .boost-emoji { font-size: 22px; }
-.touch-btn.boost .boost-count {
-  font-size: 12px;
-  font-weight: 800;
-  opacity: 0.95;
-}
-.touch-btn.boost:disabled,
-.touch-btn.boost.empty,
-.touch-btn.boost.cooling {
-  opacity: 0.4;
-}
-.touch-btn.boost.active {
-  background: linear-gradient(180deg, #fff0a0, #ff8800);
-  box-shadow: 0 0 0 3px rgba(255, 180, 40, 0.55), 0 5px 0 rgba(0,0,0,0.28);
-  animation: boost-pulse 0.4s ease-in-out infinite alternate;
-}
-@keyframes boost-pulse {
-  from { filter: brightness(1); }
-  to { filter: brightness(1.2); }
+.hud-pill.boost-pill.is-idle,
+.hud-pill.invuln-pill.is-idle {
+  display: none;
 }
 
 .hud-pill.boost-pill {
@@ -275,18 +201,6 @@ html, body {
 .hud-pill.boost-pill.cooling {
   background: rgba(80, 80, 90, 0.55);
 }
-#app[data-theme="plane"] .touch-btn.boost {
-  background: linear-gradient(180deg, rgba(120, 200, 255, 0.95), rgba(40, 120, 220, 0.92));
-  color: #061830;
-}
-#app[data-theme="space"] .touch-btn.boost {
-  background: linear-gradient(180deg, rgba(255, 160, 220, 0.95), rgba(180, 60, 160, 0.92));
-}
-#app[data-theme="plant"] .touch-btn.boost {
-  background: linear-gradient(180deg, rgba(180, 220, 80, 0.95), rgba(100, 160, 40, 0.92));
-}
-
-
 .hud-pill.invuln-pill {
   background: rgba(30, 90, 180, 0.55);
   border-color: rgba(140, 200, 255, 0.45);
@@ -298,12 +212,6 @@ html, body {
 }
 #app[data-theme="space"] .hud-pill.invuln-pill {
   background: rgba(100, 60, 180, 0.55);
-}
-#app[data-theme="space"] .touch-btn.invuln {
-  background: linear-gradient(180deg, rgba(180, 120, 255, 0.95), rgba(100, 60, 200, 0.92));
-}
-#app[data-theme="chill"] .touch-btn.invuln {
-  background: linear-gradient(180deg, rgba(140, 180, 160, 0.95), rgba(80, 120, 110, 0.92));
 }
 #app[data-theme="chill"] .hud-pill.invuln-pill {
   background: rgba(70, 100, 90, 0.55);
@@ -895,15 +803,6 @@ html, body {
   box-shadow: 0 2px 0 #4a6e5c;
 }
 
-#app[data-theme="chill"] .touch-btn.jump {
-  background: rgba(180, 170, 140, 0.92);
-  color: #3a3428;
-}
-
-#app[data-theme="chill"] .touch-btn.bomb {
-  background: rgba(140, 160, 150, 0.92);
-}
-
 #app[data-theme="chill"] .hud-pill {
   background: rgba(50, 60, 55, 0.5);
   border-color: rgba(230, 220, 200, 0.28);
@@ -993,15 +892,6 @@ html, body {
   box-shadow: 0 2px 0 #3f6212;
 }
 
-#app[data-theme="plant"] .touch-btn.jump {
-  background: rgba(132, 204, 22, 0.92);
-  color: #1a2e05;
-}
-
-#app[data-theme="plant"] .touch-btn.bomb {
-  background: rgba(244, 63, 94, 0.92);
-}
-
 #app[data-theme="plant"] .hud-pill {
   background: rgba(40, 70, 20, 0.55);
   border-color: rgba(220, 250, 160, 0.3);
@@ -1013,10 +903,6 @@ html, body {
 
 #app[data-theme="plant"] .result strong {
   color: #4d7c0f;
-}
-
-#app[data-theme="plant"] .touch-btn.invuln {
-  background: rgba(101, 163, 13, 0.9);
 }
 
 #app[data-theme="plant"] .hud-pill.invuln-pill {
@@ -1063,9 +949,6 @@ html, body {
 }
 #app[data-theme="forest"] .hud-pill {
   background: rgba(30, 90, 50, 0.55);
-}
-#app[data-theme="forest"] .touch-btn.jump {
-  background: linear-gradient(180deg, #86efac, #22c55e);
 }
 #app[data-theme="forest"] .primary {
   background: linear-gradient(180deg, #4ade80, #16a34a);
@@ -1311,9 +1194,6 @@ html, body {
 #app[data-theme="plane"] .hud-pill {
   background: rgba(15, 40, 80, 0.72);
   border-color: rgba(147, 197, 253, 0.35);
-}
-#app[data-theme="plane"] .touch-btn.bomb {
-  background: linear-gradient(160deg, #60a5fa, #1d4ed8);
 }
 #app[data-theme="plane"] .primary {
   background: linear-gradient(160deg, #38bdf8, #2563eb);
@@ -1565,7 +1445,7 @@ html, body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   z-index: 6;
   display: flex;
   flex-direction: column;
