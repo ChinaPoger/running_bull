@@ -215,6 +215,7 @@
         serverUser = r.user;
         applyUser(r.user);
         paintWallet("昵称已同步");
+        loadRanks();
       })
       .catch(function () {});
   }
@@ -260,13 +261,14 @@
         applyUser(r.user);
         absorbFinishTotals(r);
         paintWallet();
+        loadHistory();
+        loadRanks();
         const note = document.getElementById("over-sync");
         if (!note || active !== run) return;
         const best = r.portrait_best ? " · 竖屏最高 " + r.portrait_best : "";
         note.textContent = (r.capped
           ? "金币已入钱包（超出每秒上限的部分按服务器规则封顶）· 钱包 " + r.user.coins
           : "本局金币 +" + r.earned + " 已入钱包 · 现有 " + r.user.coins) + best;
-        loadHistory();
       })
       .catch(() => {
         keepUnsyncedFinish();
@@ -390,6 +392,21 @@
     return call("GET", "/history?board=portrait&limit=20").then(renderHistory).catch(function () {});
   }
 
+  function loadRanks(metric, token) {
+    const m = metric || (typeof window.__RB_RANK_METRIC === "function" ? window.__RB_RANK_METRIC() : "score");
+    if (m !== "score" && m !== "coins" && m !== "distance") return Promise.resolve();
+    return call("GET", "/portrait/leaderboard?metric=" + encodeURIComponent(m) + "&limit=20")
+      .then(function (data) {
+        if (typeof window.__RB_PAINT_RANKS === "function") window.__RB_PAINT_RANKS(data, token);
+        return data;
+      })
+      .catch(function () {
+        if (typeof window.__RB_PAINT_RANKS === "function") window.__RB_PAINT_RANKS(null, token);
+      });
+  }
+
+  window.__RB_REFRESH_RANKS = loadRanks;
+
   function adopt(user, extra) {
     serverUser = user;
     if (pendingNick && pendingNick !== (user && user.nickname)) pushNick();
@@ -398,6 +415,7 @@
     paintPowers();
     paintWallet(extra || "");
     loadHistory();
+    loadRanks();
   }
 
   const params = new URLSearchParams(location.search);

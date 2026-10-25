@@ -309,6 +309,7 @@ html, body {
   background: rgba(70, 100, 90, 0.55);
 }
 
+#home,
 #overlay,
 #over {
   position: absolute;
@@ -324,16 +325,19 @@ html, body {
   backdrop-filter: blur(4px);
 }
 
+#app[data-theme="space"] #home,
 #app[data-theme="space"] #overlay,
 #app[data-theme="space"] #over {
   background: rgba(40, 20, 60, 0.75);
 }
 
+#home.hidden,
 #overlay.hidden,
 #over.hidden {
   display: none;
 }
 
+#home.show,
 #overlay.show {
   display: flex;
 }
@@ -530,131 +534,10 @@ html, body {
   opacity: 0.7;
 }
 
-/* --- Auth / prize / leaderboard --- */
+/* --- Auth / leaderboard --- */
 .hidden {
   display: none !important;
 }
-
-.prize-banner {
-  margin: 0 0 14px;
-  padding: 12px 12px 10px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #fff7e6, #ffe8b8);
-  border: 1px solid #f0c36a;
-  text-align: left;
-}
-
-#app[data-theme="space"] .prize-banner {
-  background: linear-gradient(135deg, #fdf2f8, #f3e8ff);
-  border-color: #e9a8d4;
-}
-
-.prize-banner.compact {
-  margin: 10px 0 8px;
-  padding: 10px;
-}
-
-.prize-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #a15c00;
-  margin-bottom: 6px;
-}
-
-#app[data-theme="space"] .prize-title {
-  color: #9d174d;
-}
-
-.prize-tag {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255, 140, 0, 0.18);
-  color: #b45309;
-  vertical-align: middle;
-}
-
-.prize-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.prize-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  color: #5c3b00;
-}
-
-.prize-list strong {
-  color: #c2410c;
-  font-size: 16px;
-}
-
-.prize-rule {
-  margin: 8px 0 0;
-  font-size: 11px;
-  color: #8a6a30;
-  line-height: 1.4;
-}
-.prize-poster-block {
-  margin: 8px 0 0;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px dashed rgba(192, 120, 20, 0.45);
-}
-.prize-poster {
-  margin: 0 0 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #9a3412;
-  line-height: 1.45;
-}
-.prize-poster:last-child {
-  margin-bottom: 0;
-}
-.lottery-btn {
-  display: block;
-  width: 100%;
-  margin-top: 10px;
-  padding: 11px 12px;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  color: #1a1000;
-  cursor: pointer;
-  background: linear-gradient(180deg, #ffd36b, #f59e0b);
-  box-shadow: 0 4px 0 rgba(146, 64, 14, 0.35);
-}
-.lottery-btn:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 rgba(146, 64, 14, 0.35);
-}
-.lottery-btn-disabled,
-.lottery-btn:disabled {
-  color: #6b7280;
-  background: linear-gradient(180deg, #e5e7eb, #d1d5db);
-  box-shadow: none;
-  cursor: not-allowed;
-  opacity: 0.95;
-}
-#app[data-theme="space"] .prize-poster {
-  color: #9d174d;
-}
-#app[data-theme="space"] .prize-poster-block {
-  border-color: rgba(190, 24, 93, 0.35);
-}
-
 
 .auth-bar {
   margin: 0 0 14px;
@@ -762,8 +645,13 @@ html, body {
 }
 
 .lb-row.mine {
-  font-weight: 700;
+  font-weight: 800;
   color: #1a6fd4;
+  background: rgba(26, 111, 212, 0.12);
+  border-radius: 6px;
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 .lb-rank {
@@ -813,6 +701,7 @@ html, body {
   scroll-margin-top: 8px;
 }
 
+#home,
 #overlay,
 #over,
 .login-modal {
@@ -959,7 +848,8 @@ html, body {
 }
 
 #btn-start,
-#btn-retry {
+#btn-home-start,
+#btn-go-home {
   position: sticky;
   bottom: 0;
   z-index: 3;
@@ -977,6 +867,7 @@ html, body {
   box-shadow: 0 0 0 3px rgba(122, 158, 142, 0.28);
 }
 
+#app[data-theme="chill"] #home,
 #app[data-theme="chill"] #overlay,
 #app[data-theme="chill"] #over {
   background: rgba(40, 50, 48, 0.62);
@@ -1074,6 +965,7 @@ html, body {
   --accent: #65a30d;
 }
 
+#app[data-theme="plant"] #home,
 #app[data-theme="plant"] #overlay,
 #app[data-theme="plant"] #over {
   background: rgba(30, 50, 20, 0.62);
@@ -1430,13 +1322,15 @@ html, body {
   border-color: #60a5fa;
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.45);
 }
+#app[data-theme="plane"] #home,
 #app[data-theme="plane"] #overlay,
 #app[data-theme="plane"] #over {
   background: radial-gradient(ellipse at 50% 20%, rgba(30, 80, 160, 0.55), rgba(8, 16, 36, 0.82));
 }
 
 #btn-start,
-#btn-retry {
+#btn-home-start,
+#btn-go-home {
   position: sticky;
   bottom: 6px;
   z-index: 3;
@@ -1453,6 +1347,61 @@ html, body {
 
 .history-col {
   grid-column: 1 / -1;
+}
+
+.back-home {
+  margin-top: 0;
+  margin-bottom: 6px;
+  height: 36px;
+}
+
+.rank-panel {
+  margin: 14px 0 8px;
+  text-align: left;
+}
+
+.rank-heading {
+  margin: 0 0 8px;
+  font-size: 16px;
+  text-align: center;
+  color: #1a6fd4;
+}
+
+.rank-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.rank-tab {
+  appearance: none;
+  border: 1px solid #d8e0ea;
+  background: #f6f9fc;
+  color: #334;
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 6px 3px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.rank-tab.selected {
+  color: #fff;
+  border-color: #1a6fd4;
+  background: linear-gradient(180deg, #3da0ff, #1a6fd4);
+}
+
+#app[data-theme="space"] .rank-tab.selected {
+  border-color: #a855f7;
+  background: linear-gradient(180deg, #e879c8, #a855f7);
+}
+
+#rank-list {
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .wallet-line {

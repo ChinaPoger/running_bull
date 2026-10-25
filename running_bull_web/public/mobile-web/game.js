@@ -1,7 +1,8 @@
 /* 大角牛快跑 · 竖屏跑酷
    Adapted from the portrait reference (勇敢牛牛 · 手机跑酷): same 3-lane flow,
-   card picks, touch controls, plane mode, and local demo ad/lottery.
+   card picks, touch controls, and plane mode.
    Coins sync through running_bull_web /api (see sync.js). Shared best score is not overwritten.
+   Home is the entry; full-server portrait ranks come from /api/portrait/leaderboard.
 */
 (function () {
   "use strict";
@@ -16,15 +17,18 @@
   const hudLabelScore = document.getElementById("hud-label-score");
   const hudIcoDist = document.getElementById("hud-ico-dist");
   const hudIcoScore = document.getElementById("hud-ico-score");
-  const lbScoreTitle = document.getElementById("lb-score-title");
-  const lbTimeTitle = document.getElementById("lb-time-title");
   const overLineScore = document.getElementById("over-line-score");
   const overLineTime = document.getElementById("over-line-time");
+  const homeEl = document.getElementById("home");
   const overlay = document.getElementById("overlay");
   const overEl = document.getElementById("over");
   const btnStart = document.getElementById("btn-start");
-  const btnRetry = document.getElementById("btn-retry");
-  const btnChangeMode = document.getElementById("btn-change-mode");
+  const btnHomeStart = document.getElementById("btn-home-start");
+  const btnBackHome = document.getElementById("btn-back-home");
+  const btnGoHome = document.getElementById("btn-go-home");
+  const rankListEl = document.getElementById("rank-list");
+  const rankMineEl = document.getElementById("rank-mine");
+  const rankStatusEl = document.getElementById("rank-status");
   const btnLeft = document.getElementById("btn-left");
   const btnRight = document.getElementById("btn-right");
   const btnJump = document.getElementById("btn-jump");
@@ -55,12 +59,6 @@
   const btnLoginConfirm = document.getElementById("btn-login-confirm");
   const btnLoginCancel = document.getElementById("btn-login-cancel");
   const btnLoginGuest = document.getElementById("btn-login-guest");
-  const prizeMenu = document.getElementById("prize-banner");
-  const prizeOver = document.getElementById("prize-banner-over");
-  const lbScoreEl = document.getElementById("lb-score");
-  const lbTimeEl = document.getElementById("lb-time");
-  const lbMineEl = document.getElementById("lb-mine");
-  const overLbEl = document.getElementById("over-lb");
   const overPlaytimeEl = document.getElementById("over-playtime");
   const rewardedAdEl = document.getElementById("rewarded-ad");
   const rewardedAdCountdown = document.getElementById("rewarded-ad-countdown");
@@ -168,132 +166,9 @@
   const SWIPE_TAP_MAX = 22;
   const SWIPE_TAP_MS = 320;
 
-  /** Activity prize + lottery (demo / 活动预告 — not real payout on Pages). */
-  const PRIZE_CONFIG = {
-    label: "趣味抽奖 · 示意/非赌",
-    title: "🎰 跑酷抽奖 · Top3 红包（示意）",
-    amounts: [100, 50, 20],
-    currency: "¥",
-    realPayout: false,
-    /** Exact poster lines (monetization-approved). */
-    posterLines: [
-      "【示意 / 非赌博】玩满 2 分钟 或金币 ≥200 即可抽奖",
-      "玩越久、金币越多，抽奖券越多（最多 8 张）",
-      "每人每天 1 次；公平防刷，勇敢牛牛不怕困难",
-    ],
-    rule: "示意/非赌 · 玩满2分钟或金币达标可抽 · Top3 另发红包（非正式）",
-    lottery: {
-      entryPlaySec: 120,
-      entryCoins: 200,
-      ticketSoftCap: 8,
-      dailyDrawLimit: 1,
-      dailyPlayCapMin: 15,
-      ineligibleLabel: "再跑一会儿再来抽",
-      eligibleLabel: "🎰 开心抽一发",
-    },
-  };
-
-  const LS_LOTTERY = "rb_lottery_v1";
-
-  /** Activity coins: prefer run coins; fallback ≈ score÷10. */
-  function activityCoins(runCoins, runScore) {
-    if (runCoins != null && !Number.isNaN(Number(runCoins))) {
-      return Math.max(0, Math.floor(Number(runCoins)));
-    }
-    if (runScore != null && runScore > 0) return Math.max(0, Math.floor(runScore / 10));
-    return 0;
-  }
-
-  /**
-   * Ticket count W after qualify (local mock; see docs/LOTTERY_RULES.md).
-   * T = min(1 + 0.5*(t_min-2), 5) for t≥2min (daily play for tickets capped 15min)
-   * C = min(floor(g/100), 5)
-   * W = min(T+C, 8); base 1 after qualify via T at 2min.
-   */
-  function lotteryTickets(playSec, gCoins) {
-    const L = PRIZE_CONFIG.lottery;
-    const g = Math.max(0, Math.floor(gCoins || 0));
-    const tSec = Math.max(0, playSec || 0);
-    const qualifies = tSec >= L.entryPlaySec || g >= L.entryCoins;
-    if (!qualifies) return { qualifies: false, T: 0, C: 0, W: 0, tMin: 0, g: g };
-    const tMinRaw = tSec / 60;
-    const tMin = Math.min(tMinRaw, L.dailyPlayCapMin);
-    let T = 0;
-    if (tMin >= 2) T = Math.min(1 + 0.5 * (tMin - 2), 5);
-    const C = Math.min(Math.floor(g / 100), 5);
-    let quizBonus = 0;
-    try {
-      quizBonus = Math.max(0, Number(loadLotteryState().quizBonus) || 0);
-    } catch (err) {}
-    let W = Math.min(T + C + quizBonus, L.ticketSoftCap);
-    if (W < 1) W = 1; // base 1 after qualify
-    return {
-      qualifies: true,
-      T: Math.round(T * 100) / 100,
-      C: C,
-      quizBonus: quizBonus,
-      W: W,
-      tMin: Math.round(tMin * 100) / 100,
-      g: g,
-    };
-  }
-
-  function lotteryDayKey() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return y + "-" + m + "-" + day;
-  }
-
-  function loadLotteryState() {
-    try {
-      const raw = localStorage.getItem(LS_LOTTERY);
-      if (!raw) return { day: lotteryDayKey(), drawn: false, lastRun: null, quizBonus: 0 };
-      const o = JSON.parse(raw);
-      if (!o || o.day !== lotteryDayKey()) {
-        return {
-          day: lotteryDayKey(),
-          drawn: false,
-          lastRun: o && o.lastRun ? o.lastRun : null,
-          quizBonus: 0,
-        };
-      }
-      if (o.quizBonus == null) o.quizBonus = 0;
-      return o;
-    } catch (e) {
-      return { day: lotteryDayKey(), drawn: false, lastRun: null, quizBonus: 0 };
-    }
-  }
-
-  function saveLotteryState(st) {
-    try {
-      localStorage.setItem(LS_LOTTERY, JSON.stringify(st));
-    } catch (e) {}
-  }
-
-  function bestLotteryStats() {
-    const st = loadLotteryState();
-    let playSec = st.lastRun && st.lastRun.playSec ? st.lastRun.playSec : 0;
-    let g = st.lastRun && st.lastRun.coins != null ? st.lastRun.coins : 0;
-    if (currentUser) {
-      const lb = loadLb();
-      const rows = []
-        .concat(lb.byPlayTime || [])
-        .concat(lb.byScore || []);
-      for (const r of rows) {
-        if (r.id !== currentUser.id) continue;
-        if (r.playTime != null) playSec = Math.max(playSec, r.playTime);
-        if (r.coins != null) g = Math.max(g, r.coins);
-        else if (r.score != null) g = Math.max(g, activityCoins(0, r.score));
-      }
-    }
-    return { playSec: playSec, coins: g };
-  }
 
   const LS_USER = "rb_user_v1";
-  const LS_LB = "rb_leaderboard_v1";
-  const LB_MAX = 20;
+
 
   /** @type {"earth"|"space"|"chill"|"plant"|"forest"|"plane"} */
   let mode = "earth";
@@ -566,50 +441,6 @@
     });
     if (typeof window.__RB_ON_NICK === "function") window.__RB_ON_NICK(currentUser);
     closeLoginModal();
-    renderLeaderboards();
-  }
-
-  function emptyLb() {
-    return { byScore: [], byPlayTime: [], byChill: [] };
-  }
-
-  function loadLb() {
-    try {
-      const raw = localStorage.getItem(LS_LB);
-      if (!raw) return emptyLb();
-      const data = JSON.parse(raw);
-      return {
-        byScore: Array.isArray(data.byScore) ? data.byScore : [],
-        byPlayTime: Array.isArray(data.byPlayTime) ? data.byPlayTime : [],
-        byChill: Array.isArray(data.byChill) ? data.byChill : [],
-      };
-    } catch (_) {
-      return emptyLb();
-    }
-  }
-
-  function saveLb(data) {
-    localStorage.setItem(LS_LB, JSON.stringify(data));
-    window.__RB_LB = data;
-  }
-
-  function upsertRecord(list, entry, key, max) {
-    const i = list.findIndex((r) => r.id === entry.id);
-    if (i >= 0) {
-      if (entry[key] > list[i][key]) {
-        list[i] = { ...list[i], ...entry, updatedAt: Date.now() };
-      } else {
-        list[i] = {
-          ...list[i],
-          nickname: entry.nickname,
-          avatar: entry.avatar,
-        };
-      }
-    } else {
-      list.push({ ...entry, updatedAt: Date.now() });
-    }
-    list.sort((a, b) => b[key] - a[key] || (b.updatedAt || 0) - (a.updatedAt || 0));
-    return list.slice(0, max);
   }
 
   function computeScore() {
@@ -620,181 +451,11 @@
     return Math.floor(distance) + coins * 10;
   }
 
-  function recordRun(finalScore, playSec) {
-    const user = currentUser || {
-      id: "guest_local",
-      nickname: "游客",
-      avatar: "",
-      provider: "guest",
-    };
-    const entry = {
-      id: user.id,
-      nickname: user.nickname,
-      avatar: user.avatar || "",
-      score: Math.max(0, Math.floor(finalScore)),
-      playTime: Math.max(0, Math.round(playSec * 10) / 10),
-      coins: Math.max(0, Math.floor(coins)),
-      mode: mode,
-    };
-    const lb = loadLb();
-    if (mode === "chill") {
-      lb.byChill = upsertRecord(lb.byChill, entry, "score", LB_MAX);
-    } else {
-      lb.byScore = upsertRecord(lb.byScore, entry, "score", LB_MAX);
-    }
-    lb.byPlayTime = upsertRecord(lb.byPlayTime, entry, "playTime", LB_MAX);
-    saveLb(lb);
-    return lb;
-  }
-
   function formatTime(sec) {
     const s = Math.max(0, Math.floor(sec));
     const m = Math.floor(s / 60);
     const r = s % 60;
     return m > 0 ? m + "分" + String(r).padStart(2, "0") + "秒" : r + "秒";
-  }
-
-  function renderPrizeBanners(ctx) {
-    const L = PRIZE_CONFIG.lottery;
-    const stats = ctx || bestLotteryStats();
-    const g = activityCoins(stats.coins, stats.score);
-    const tick = lotteryTickets(stats.playSec || 0, g);
-    const st = loadLotteryState();
-    const canDraw = tick.qualifies && !st.drawn;
-    const wLabel = Number.isInteger(tick.W) ? String(tick.W) : String(Math.round(tick.W * 10) / 10);
-    const btnLabel = canDraw
-      ? L.eligibleLabel + "（约 " + wLabel + " 张券）"
-      : st.drawn
-        ? "今日已抽过，明天再来"
-        : L.ineligibleLabel;
-    const posterHtml = PRIZE_CONFIG.posterLines
-      .map(function (line) {
-        return '<p class="prize-poster">' + line + "</p>";
-      })
-      .join("");
-    const html =
-      '<div class="prize-title">' +
-      PRIZE_CONFIG.title +
-      ' <span class="prize-tag">' +
-      PRIZE_CONFIG.label +
-      "</span></div>" +
-      '<ol class="prize-list">' +
-      PRIZE_CONFIG.amounts
-        .map(
-          (amt, i) =>
-            "<li><span class=\"prize-rank\">第" +
-            (i + 1) +
-            "名</span> <strong>" +
-            PRIZE_CONFIG.currency +
-            amt +
-            "</strong></li>"
-        )
-        .join("") +
-      "</ol>" +
-      '<div class="prize-poster-block" aria-label="抽奖海报">' +
-      posterHtml +
-      "</div>" +
-      '<p class="prize-rule">' +
-      PRIZE_CONFIG.rule +
-      (PRIZE_CONFIG.realPayout ? "" : " · 示意金额 / 非赌博 · 正式发放待活动后端") +
-      "</p>" +
-      '<button type="button" class="lottery-btn' +
-      (canDraw ? "" : " lottery-btn-disabled") +
-      '" data-lottery-btn ' +
-      (canDraw ? "" : "disabled ") +
-      'aria-disabled="' +
-      (canDraw ? "false" : "true") +
-      '">' +
-      btnLabel +
-      "</button>";
-    if (prizeMenu) prizeMenu.innerHTML = html;
-    if (prizeOver) prizeOver.innerHTML = html;
-    bindLotteryButtons(stats, tick, canDraw);
-  }
-
-  function bindLotteryButtons(stats, tick, canDraw) {
-    document.querySelectorAll("[data-lottery-btn]").forEach(function (btn) {
-      btn.onclick = function () {
-        if (!canDraw) return;
-        mockLotteryDraw(tick);
-      };
-    });
-  }
-
-  function mockLotteryDraw(tick) {
-    const st = loadLotteryState();
-    if (st.drawn) {
-      alert("今天已经抽过啦，明天再来～");
-      renderPrizeBanners();
-      return;
-    }
-    // Local mock weighted draw: consume all W tickets in one draw (no real backend).
-    const pool = [
-      { name: "谢谢参与", w: 40 },
-      { name: "再来一局好运贴", w: 25 },
-      { name: "小金币包", w: 20 },
-      { name: "¥20 红包券（示意）", w: 8 },
-      { name: "¥50 红包券（示意）", w: 5 },
-      { name: "¥100 红包券（示意）", w: 2 },
-    ];
-    const boost = Math.max(1, tick.W);
-    const weights = pool.map(function (p, i) {
-      // More tickets nudge toward better tiers slightly (mock only).
-      return p.w + (i >= 3 ? boost * 1.5 : 0);
-    });
-    let sum = 0;
-    for (let i = 0; i < weights.length; i++) sum += weights[i];
-    let r = Math.random() * sum;
-    let pick = pool[0];
-    for (let i = 0; i < pool.length; i++) {
-      r -= weights[i];
-      if (r <= 0) {
-        pick = pool[i];
-        break;
-      }
-    }
-    st.drawn = true;
-    st.day = lotteryDayKey();
-    st.lastPrize = pick.name;
-    st.lastW = tick.W;
-    saveLotteryState(st);
-    alert(
-      "本局券数 W=" +
-        tick.W +
-        "（时长券 T=" +
-        tick.T +
-        " + 金币券 C=" +
-        tick.C +
-        "）\n一次抽完 · 抽中：" +
-        pick.name +
-        "\n（本地示意，正式抽奖待活动后端）"
-    );
-    renderPrizeBanners();
-  }
-
-  function renderLbList(el, rows, key, labelFn) {
-    if (!el) return;
-    if (!rows.length) {
-      el.innerHTML = '<li class="lb-empty">暂无记录，跑一局上榜</li>';
-      return;
-    }
-    el.innerHTML = rows
-      .slice(0, 5)
-      .map((r, i) => {
-        const mine = currentUser && r.id === currentUser.id ? " mine" : "";
-        return (
-          '<li class="lb-row' +
-          mine +
-          '"><span class="lb-rank">' +
-          (i + 1) +
-          '</span><span class="lb-name">' +
-          escapeHtml(r.nickname) +
-          '</span><span class="lb-val">' +
-          labelFn(r[key]) +
-          "</span></li>"
-        );
-      })
-      .join("");
   }
 
   function escapeHtml(s) {
@@ -805,56 +466,153 @@
       .replace(/"/g, "&quot;");
   }
 
-  function myBest() {
-    if (!currentUser) return null;
-    const lb = loadLb();
-    const s = lb.byScore.find((r) => r.id === currentUser.id);
-    const c = lb.byChill.find((r) => r.id === currentUser.id);
-    const t = lb.byPlayTime.find((r) => r.id === currentUser.id);
-    return {
-      score: s ? s.score : 0,
-      chillScore: c ? c.score : 0,
-      playTime: t ? t.playTime : 0,
-    };
+  let rankMetric = "score";
+  let rankToken = 0;
+  let homeReturnTimer = 0;
+  const HOME_RETURN_MS = 1800;
+  const RANK_LABEL = { score: "总积分", coins: "总金币", distance: "总距离" };
+
+  function cancelHomeReturn() {
+    if (homeReturnTimer) {
+      clearTimeout(homeReturnTimer);
+      homeReturnTimer = 0;
+    }
   }
 
-  function renderLeaderboards() {
-    const lb = loadLb();
-    window.__RB_LB = lb;
-    const chill = mode === "chill";
-    if (lbScoreTitle) lbScoreTitle.textContent = chill ? "时长积分榜" : "得分榜";
-    if (lbTimeTitle) lbTimeTitle.textContent = chill ? "最长存活" : "最长游玩";
-    if (chill) {
-      renderLbList(lbScoreEl, lb.byChill, "score", (v) => String(v));
-    } else {
-      renderLbList(lbScoreEl, lb.byScore, "score", (v) => String(v));
+  function screenOpen(el) {
+    return !!(el && !el.classList.contains("hidden"));
+  }
+
+  function hideScreen(el) {
+    if (!el) return;
+    el.classList.add("hidden");
+    el.classList.remove("show");
+    el.classList.remove("show-over");
+  }
+
+  function showScreen(el) {
+    if (!el) return;
+    el.classList.remove("hidden");
+    el.classList.add("show");
+  }
+
+  function refreshRanks(metric) {
+    const token = ++rankToken;
+    if (typeof window.__RB_REFRESH_RANKS === "function") {
+      window.__RB_REFRESH_RANKS(metric || rankMetric, token);
     }
-    renderLbList(lbTimeEl, lb.byPlayTime, "playTime", formatTime);
-    if (lbMineEl) {
-      const best = myBest();
-      if (currentUser && best) {
-        lbMineEl.textContent = chill
-          ? "我的最佳：时长积分 " + best.chillScore + " · 最长 " + formatTime(best.playTime)
-          : "我的最佳：得分 " + best.score + " · 最长 " + formatTime(best.playTime);
-        lbMineEl.classList.remove("hidden");
+    return token;
+  }
+
+  function showHome() {
+    cancelHomeReturn();
+    running = false;
+    dead = false;
+    deathFx = false;
+    rewardAdPhase = null;
+    rewardAdT = 0;
+    pendingHitObstacle = null;
+    rewardSkipStreak = 0;
+    rewardReviveUsed = 0;
+    nearMissCd = 0;
+    rewardAdToken += 1;
+    hideRewardedAd();
+    hideRewardToast();
+    hideScreen(overlay);
+    hideScreen(overEl);
+    showScreen(homeEl);
+    refreshRanks();
+  }
+
+  function showSelect() {
+    cancelHomeReturn();
+    running = false;
+    dead = false;
+    deathFx = false;
+    rewardAdPhase = null;
+    rewardAdT = 0;
+    pendingHitObstacle = null;
+    hideRewardedAd();
+    hideRewardToast();
+    hideScreen(homeEl);
+    hideScreen(overEl);
+    showScreen(overlay);
+  }
+
+  function scheduleHomeReturn() {
+    cancelHomeReturn();
+    homeReturnTimer = setTimeout(function () {
+      homeReturnTimer = 0;
+      if (!running && screenOpen(overEl)) showHome();
+    }, HOME_RETURN_MS);
+  }
+
+  function formatRankValue(value) {
+    return String(Math.max(0, Math.floor(Number(value) || 0)));
+  }
+
+  function setRankMetric(metric) {
+    if (metric !== "score" && metric !== "coins" && metric !== "distance") return;
+    rankMetric = metric;
+    document.querySelectorAll("[data-rank]").forEach(function (btn) {
+      const on = btn.getAttribute("data-rank") === metric;
+      btn.classList.toggle("selected", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    if (rankStatusEl) rankStatusEl.textContent = "正在读取" + RANK_LABEL[metric] + "…";
+    if (rankListEl) rankListEl.innerHTML = '<li class="lb-empty">正在读取…</li>';
+    if (rankMineEl) rankMineEl.textContent = "";
+    refreshRanks(metric);
+  }
+
+  function paintRanks(data, token) {
+    if (token != null && token !== rankToken) return;
+    if (data && data.metric && data.metric !== rankMetric) return;
+    if (!rankListEl) return;
+    if (!data || !Array.isArray(data.top)) {
+      if (rankStatusEl) rankStatusEl.textContent = "排行榜暂时连不上";
+      rankListEl.innerHTML = '<li class="lb-empty">连上服务器后显示全服排名</li>';
+      if (rankMineEl) rankMineEl.textContent = "";
+      return;
+    }
+    const metric = data.metric || rankMetric;
+    const label = RANK_LABEL[metric] || "总积分";
+    if (rankStatusEl) rankStatusEl.textContent = label + " · 生涯累计 · 全服";
+    if (!data.top.length) {
+      rankListEl.innerHTML = '<li class="lb-empty">还没有人上榜，跑完一局就会出现</li>';
+    } else {
+      rankListEl.innerHTML = data.top
+        .map(function (r) {
+          return (
+            '<li class="lb-row' +
+            (r.me ? " mine" : "") +
+            '"><span class="lb-rank">' +
+            r.rank +
+            '</span><span class="lb-name">' +
+            escapeHtml(r.nickname || "牛友") +
+            '</span><span class="lb-val">' +
+            formatRankValue(r.value) +
+            "</span></li>"
+          );
+        })
+        .join("");
+    }
+    if (rankMineEl) {
+      const me = data.me;
+      if (me && me.rank) {
+        rankMineEl.textContent = "我的排名 第" + me.rank + " · " + label + " " + formatRankValue(me.value);
+      } else if (me) {
+        rankMineEl.textContent = "我还没上" + label + "榜，跑完一局就会计入";
       } else {
-        lbMineEl.textContent = chill
-          ? "本机账号会记下存活时长积分"
-          : "本机账号会记下得分与游玩时长";
-        lbMineEl.classList.remove("hidden");
+        rankMineEl.textContent = "";
       }
     }
-    if (overLbEl) {
-      const top = chill ? lb.byChill.slice(0, 3) : lb.byScore.slice(0, 3);
-      const label = chill ? "时长榜 " : "高分榜 ";
-      overLbEl.innerHTML = top.length
-        ? label +
-          top
-            .map((r, i) => i + 1 + "." + escapeHtml(r.nickname) + " " + r.score)
-            .join(" · ")
-        : "";
-    }
   }
+
+  window.__RB_RANK_METRIC = function () {
+    return rankMetric;
+  };
+  window.__RB_PAINT_RANKS = paintRanks;
 
   function renderAuth() {
     if (!authBar) return;
@@ -872,13 +630,6 @@
     }
   }
 
-  window.__RB_PRIZE = PRIZE_CONFIG;
-  window.__RB_LOTTERY = {
-    tickets: lotteryTickets,
-    activityCoins: activityCoins,
-    state: loadLotteryState,
-    config: PRIZE_CONFIG.lottery,
-  };
   window.__RB_AUTH = {
     getUser: () => currentUser,
     loginMock: openLoginModal,
@@ -962,7 +713,6 @@
     }
     applyHudLabels();
     syncHeroPick();
-    renderLeaderboards();
   }
 
   function setHero(kind) {
@@ -1151,10 +901,10 @@
     planeShots = [];
     planeFireAcc = 0;
     planeAutoFire = true;
-    overlay.classList.add("hidden");
-    overlay.classList.remove("show");
-    overEl.classList.add("hidden");
-    overEl.classList.remove("show-over");
+    cancelHomeReturn();
+    hideScreen(homeEl);
+    hideScreen(overlay);
+    hideScreen(overEl);
     if (btnBomb) {
       btnBomb.disabled = false;
       btnBomb.classList.remove("cooling");
@@ -1164,25 +914,6 @@
     const syncNote = document.getElementById("over-sync");
     if (syncNote) syncNote.textContent = "";
     if (typeof window.__RB_ON_START === "function") window.__RB_ON_START();
-  }
-
-  function showTitle() {
-    running = false;
-    dead = false;
-    deathFx = false;
-    rewardAdPhase = null;
-    rewardAdT = 0;
-    pendingHitObstacle = null;
-    rewardSkipStreak = 0;
-    rewardReviveUsed = 0;
-    nearMissCd = 0;
-    rewardAdToken += 1;
-    hideRewardedAd();
-    hideRewardToast();
-    overEl.classList.add("hidden");
-    overEl.classList.remove("show-over");
-    overlay.classList.remove("hidden");
-    overlay.classList.add("show");
   }
 
   function updateHud() {
@@ -2387,20 +2118,12 @@
       overLineTime.classList.toggle("hidden", mode === "chill"); // already shown as 存活
     }
     const encourage = document.querySelector("#over .over-encourage");
-    if (encourage) {
-      encourage.textContent =
-        mode === "chill"
-          ? "慢慢来，再多待一会儿 😎"
-          : mode === "plant"
-            ? "草坪再战一轮 🌻"
-            : "勇敢牛牛，再来一次";
-    }
+    if (encourage) encourage.textContent = "回到首页再开一局";
     const badge = document.querySelector("#over .over-badge");
     if (badge) {
       badge.textContent =
         mode === "chill" ? "CHILL OVER" : mode === "plant" ? "ZOMBIES WIN" : "GAME OVER";
     }
-    recordRun(score, sessionPlaySec);
     if (typeof window.__RB_ON_FINISH === "function") {
       window.__RB_ON_FINISH({
         score: score,
@@ -2411,21 +2134,14 @@
         hero: heroKind,
       });
     }
-    const st = loadLotteryState();
-    st.lastRun = {
-      playSec: sessionPlaySec,
-      coins: coins,
-      score: score,
-      at: Date.now(),
-    };
-    saveLotteryState(st);
-    renderLeaderboards();
-    renderPrizeBanners({ playSec: sessionPlaySec, coins: coins, score: score });
     try {
       showDisplayAd("result");
     } catch (e) {}
+    hideScreen(homeEl);
+    hideScreen(overlay);
     overEl.classList.remove("hidden");
     overEl.classList.add("show-over");
+    scheduleHomeReturn();
   }
 
   function update(dt) {
@@ -5234,19 +4950,45 @@
     lastStartAt = now;
     resetGame();
   }
-  bindPress(btnStart, startOnce);
-  bindPress(btnRetry, startOnce);
-  btnStart.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    startOnce();
-  });
-  btnRetry.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    startOnce();
-  });
-  if (btnChangeMode) {
-    btnChangeMode.addEventListener("click", showTitle);
+  function bindTap(el, fn) {
+    if (!el) return;
+    let down = false;
+    let handled = false;
+    el.addEventListener("pointerdown", (ev) => {
+      down = true;
+      handled = false;
+      ev.stopPropagation();
+    });
+    el.addEventListener("pointerup", (ev) => {
+      if (!down) return;
+      down = false;
+      handled = true;
+      ev.preventDefault();
+      ev.stopPropagation();
+      fn();
+    });
+    el.addEventListener("pointercancel", () => {
+      down = false;
+    });
+    el.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      if (!handled) fn();
+      handled = false;
+    });
   }
+  bindPress(btnStart, startOnce);
+  if (btnStart) {
+    btnStart.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      startOnce();
+    });
+  }
+  bindTap(btnHomeStart, showSelect);
+  bindTap(btnBackHome, showHome);
+  bindTap(btnGoHome, showHome);
+  document.querySelectorAll("[data-rank]").forEach((btn) => {
+    bindTap(btn, () => setRankMetric(btn.getAttribute("data-rank")));
+  });
 
   let touchStartX = 0;
   let touchStartY = 0;
@@ -5390,34 +5132,38 @@
         activateBoost();
         break;
       case "Enter":
-        if (!running) resetGame();
+        if (running || deathFx || isRewardedAdOpen()) break;
+        if (ev.target && ev.target.closest && ev.target.closest("button, a, input, textarea")) break;
+        if (screenOpen(overEl)) showHome();
+        else if (screenOpen(homeEl)) showSelect();
+        else if (screenOpen(overlay)) startOnce();
         break;
       case "4":
-        if (!running) setMode("earth");
+        if (!running && screenOpen(overlay)) setMode("earth");
         break;
       case "6":
-        if (!running) setMode("forest");
+        if (!running && screenOpen(overlay)) setMode("forest");
         break;
       case "7":
-        if (!running) setMode("space");
+        if (!running && screenOpen(overlay)) setMode("space");
         break;
       case "5":
-        if (!running) setMode("chill");
+        if (!running && screenOpen(overlay)) setMode("chill");
         break;
       case "9":
-        if (!running) setMode("plant");
+        if (!running && screenOpen(overlay)) setMode("plant");
         break;
       case "0":
-        if (!running) setMode("plane");
+        if (!running && screenOpen(overlay)) setMode("plane");
         break;
       case "1":
-        if (!running) setHero("bull");
+        if (!running && screenOpen(overlay)) setHero("bull");
         break;
       case "2":
-        if (!running) setHero("deer");
+        if (!running && screenOpen(overlay)) setHero("deer");
         break;
       case "3":
-        if (!running) setHero("dog");
+        if (!running && screenOpen(overlay)) setHero("dog");
         break;
       default:
         break;
@@ -5449,13 +5195,13 @@
   }
 
   currentUser = loadUser();
-  window.__RB_LB = loadLb();
-  renderPrizeBanners();
+  try {
+    localStorage.removeItem("rb_lottery_v1");
+  } catch (e) {}
   try {
     refreshDisplayAds();
   } catch (e) {}
   renderAuth();
-  renderLeaderboards();
 
   window.__RB_OBSTACLE_CLEARS = obstacleClearedBy;
 
@@ -5469,10 +5215,10 @@
       provider: "device",
       boundWeChat: false,
     });
-    renderLeaderboards();
   };
 
   setMode("earth");
+  showHome();
   resize();
   requestAnimationFrame(loop);
 })();

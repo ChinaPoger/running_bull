@@ -32,7 +32,7 @@
 
     <h2>1. 存在这台设备上的数据</h2>
     <ul>
-      <li><strong>本机排行、角色、抽奖示意</strong>：得分榜、游玩时长、演示昵称和头像 URL、抽奖状态，保存在浏览器 <code>localStorage</code>。</li>
+      <li><strong>本机角色和昵称</strong>：选中的角色、演示昵称和头像 URL，保存在浏览器 <code>localStorage</code>。全服排行榜在服务器上，不存在本机榜里。</li>
       <li><strong>设备号</strong>：<code>rb_device</code>，同时放在 <code>localStorage</code> 和同名 Cookie 里，和横版网页共用。这是账号本身。两份都在时以本地存储为准；只剩一份时用它把另一份补回来。</li>
     </ul>
 
@@ -49,7 +49,7 @@
     <ul>
       <li>不加载广告脚本，展示广告位保持关闭。</li>
       <li>撞障「激励视频」是本地倒计时，不上传观看记录。</li>
-      <li>抽奖和 Top3 红包是<strong>示意 / 非赌博</strong>，不产生真实支付。</li>
+      <li>不发放红包，也不做现金奖励。</li>
       <li>竖屏页不提供微信登录。公众号授权接口默认关闭，密钥不会出现在网页里。</li>
     </ul>
 

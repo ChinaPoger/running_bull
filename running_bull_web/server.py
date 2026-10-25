@@ -454,6 +454,58 @@ def api_topup(h, body):
     return {'order_id': oid, 'mock': True, 'coins_added': p['coins'], 'user': user_view(get_user(u['device_id']))}
 
 
+PORTRAIT_RANK_METRICS = ('score', 'coins', 'distance')
+
+
+def api_portrait_leaderboard(h, body):
+    """全服竖屏生涯榜。积分、金币、距离都是已结算 portrait 对局的累计，和 portrait_totals 同一套求和。"""
+    metric = str(h._qs.get('metric', ['score'])[0] or 'score').strip().lower()
+    if metric not in PORTRAIT_RANK_METRICS:
+        raise ApiError(400, 'metric 只能是 score、coins 或 distance')
+    try:
+        limit = max(1, min(50, int(h._qs.get('limit', ['20'])[0])))
+    except (TypeError, ValueError):
+        limit = 20
+    agg = 'COALESCE(SUM(r.%s),0)' % metric
+    rows = db.all(
+        'SELECT u.id AS id, u.nickname AS nickname, %s AS value '
+        'FROM runs r JOIN users u ON u.id = r.user_id '
+        'WHERE r.finished = 1 AND r.board = ? '
+        'GROUP BY u.id, u.nickname '
+        'HAVING %s > 0 '
+        'ORDER BY value DESC, u.id ASC LIMIT ?' % (agg, agg),
+        ('portrait', limit))
+    me = None
+    try:
+        u = h.user()
+    except ApiError:
+        u = None
+    if u:
+        value = int(career_totals(u['id'], 'portrait')[metric])
+        rank = None
+        if value > 0:
+            ahead = db.one(
+                'SELECT COUNT(*) AS n FROM ('
+                ' SELECT r.user_id AS user_id FROM runs r '
+                ' WHERE r.finished = 1 AND r.board = ? '
+                ' GROUP BY r.user_id '
+                ' HAVING %s > ? OR (%s = ? AND r.user_id < ?)'
+                ') t' % (agg, agg),
+                ('portrait', value, value, u['id']))
+            rank = int((ahead or {}).get('n') or 0) + 1
+        me = {'id': u['id'], 'nickname': u['nickname'], 'value': value, 'rank': rank}
+    top = []
+    for i, r in enumerate(rows):
+        top.append({
+            'rank': i + 1,
+            'id': int(r['id']),
+            'nickname': r['nickname'] or '牛友',
+            'value': int(r['value'] or 0),
+            'me': bool(me and int(r['id']) == int(me['id'])),
+        })
+    return {'metric': metric, 'board': 'portrait', 'top': top, 'me': me}
+
+
 def api_leaderboard(h, body):
     rows = db.all('SELECT id, nickname, best, equipped_char FROM users WHERE best > 0 ORDER BY best DESC, id ASC LIMIT 20')
     return {'top': [dict(rank=i + 1, **r) for i, r in enumerate(rows)]}
@@ -898,6 +950,7 @@ ROUTES = [
     ('POST', r'/api/runs/(\w+)/power', api_portrait_power),
     ('POST', r'/api/runs/(\w+)/finish', api_finish),
     ('GET', r'/api/history', api_history),
+    ('GET', r'/api/portrait/leaderboard', api_portrait_leaderboard),
     ('GET', r'/api/wechat/config', api_wechat_config),
     ('POST', r'/api/wechat/logout', api_wechat_logout),
     ('POST', r'/api/topup', api_topup),
