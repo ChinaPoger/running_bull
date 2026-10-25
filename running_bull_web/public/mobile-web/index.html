@@ -9,7 +9,7 @@
   <meta name="description" content="大角牛快跑 · 勇敢牛牛，不怕困难 —— 竖屏三道跑酷" />
   <title>大角牛快跑 · 竖屏跑酷</title>
   <link rel="icon" href="../assets/coin.png" />
-  <link rel="stylesheet" href="style.css?v=career1" />
+  <link rel="stylesheet" href="style.css?v=home2" />
 </head>
 <body>
   <div id="app" data-theme="earth">
@@ -102,8 +102,69 @@
       </button>
     </div>
 
-    <div id="overlay" class="show">
+    <div id="home" class="show" aria-label="首页">
+      <div class="card home-card">
+        <p class="slogan">勇敢牛牛，不怕困难</p>
+        <h1>大角牛快跑</h1>
+        <p class="hint">首页 · 选好再跑</p>
+
+        <div id="auth-bar" class="auth-bar">
+          <div id="auth-profile" class="auth-profile">
+            <img id="auth-avatar" class="auth-avatar hidden" alt="" width="32" height="32" />
+            <span id="auth-nick" class="auth-nick">本机账号</span>
+            <button type="button" id="btn-guest-nick" class="linkish">改昵称</button>
+          </div>
+          <p id="device-note" class="device-note">同一浏览器会记住金币和成绩。清除本站数据会换成新账号；换一部手机是另一个账号。</p>
+        </div>
+
+        <div class="career-strip" aria-label="生涯累计">
+          <div class="career-cell">
+            <span class="career-label">总积分</span>
+            <strong data-career="score">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总金币</span>
+            <strong data-career="coins">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总距离</span>
+            <strong data-career="distance">0</strong>
+          </div>
+        </div>
+
+        <button type="button" id="btn-home-start" class="primary">开始游戏</button>
+
+        <section class="rank-panel" aria-label="排行榜">
+          <h2 class="rank-heading">排行榜</h2>
+          <div class="rank-tabs" role="tablist" aria-label="三个排行榜">
+            <button type="button" class="rank-tab selected" role="tab" data-rank="score" aria-selected="true" aria-controls="rank-list">积分排行榜</button>
+            <button type="button" class="rank-tab" role="tab" data-rank="coins" aria-selected="false" aria-controls="rank-list">金币排行榜</button>
+            <button type="button" class="rank-tab" role="tab" data-rank="distance" aria-selected="false" aria-controls="rank-list">距离排行榜</button>
+          </div>
+          <p id="rank-status" class="lb-mine">正在连接账号…</p>
+          <p id="rank-mine" class="lb-mine"></p>
+          <ol id="rank-list" class="lb-list" role="tabpanel" aria-live="polite"></ol>
+        </section>
+
+        <div class="lb-panel" id="history-panel" aria-label="我的竖屏记录">
+          <div class="lb-col history-col">
+            <h3>我的竖屏记录</h3>
+            <p id="history-best" class="lb-mine"></p>
+            <ol id="history-list" class="lb-list"></ol>
+          </div>
+        </div>
+
+        <p class="legal-links">
+          <a href="about.html">关于</a>
+          · <a href="privacy.html">隐私政策</a>
+          · <a href="../">横版网页</a>
+        </p>
+      </div>
+    </div>
+
+    <div id="overlay" class="hidden">
       <div class="card">
+        <button type="button" id="btn-back-home" class="ghost back-home">返回首页</button>
         <p class="slogan" id="title-slogan">勇敢牛牛，不怕困难</p>
         <h1 id="title-heading">大角牛快跑</h1>
         <p class="hint" id="mode-hint">选地图 · 点下方卡片（手机无需键盘）</p>
@@ -204,17 +265,6 @@
           </button>
         </div>
 
-        <div id="prize-banner" class="prize-banner" aria-label="跑酷抽奖与 Top3 红包（示意/非赌）"></div>
-
-        <div id="auth-bar" class="auth-bar">
-          <div id="auth-profile" class="auth-profile">
-            <img id="auth-avatar" class="auth-avatar hidden" alt="" width="32" height="32" />
-            <span id="auth-nick" class="auth-nick">本机账号</span>
-            <button type="button" id="btn-guest-nick" class="linkish">改昵称</button>
-          </div>
-          <p id="device-note" class="device-note">同一浏览器会记住金币和成绩。清除本站数据会换成新账号；换一部手机是另一个账号。</p>
-        </div>
-
         <ul class="tips">
           <li>左右按钮或左右滑 = 换道</li>
           <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
@@ -231,8 +281,8 @@
         <p id="wallet-line" class="wallet-line">正在连接钱包…</p>
         <p class="about-blurb" id="about-blurb">
           大角牛快跑 · 竖屏三道跑酷：选角选图，换道跳跃躲障捡币；含飞机大战。口号「勇敢牛牛，不怕困难」。
-          抽奖与 Top3 红包为<strong>活动示意 / 非赌博</strong>；撞障激励为本地占位（不加载广告 SDK）。
-          捡到的金币记入和横版共用的钱包。
+          撞障激励为本地占位（不加载广告 SDK）。
+          捡到的金币记入和横版共用的钱包。全服排行按生涯总积分、总金币、总距离。
           <a href="about.html">关于</a> ·
           <a href="privacy.html">隐私政策</a> ·
           <a href="../">横版网页</a>
@@ -254,30 +304,10 @@
           -->
         </div>
 
-        <div class="lb-panel" aria-label="排行榜">
-          <div class="lb-col">
-            <h3 id="lb-score-title">得分榜</h3>
-            <ol id="lb-score" class="lb-list"></ol>
-          </div>
-          <div class="lb-col">
-            <h3 id="lb-time-title">最长游玩</h3>
-            <ol id="lb-time" class="lb-list"></ol>
-          </div>
-        </div>
-        <p id="lb-mine" class="lb-mine"></p>
-        <div class="lb-panel" id="history-panel" aria-label="我的竖屏记录">
-          <div class="lb-col history-col">
-            <h3>我的竖屏记录</h3>
-            <p id="history-best" class="lb-mine"></p>
-            <ol id="history-list" class="lb-list"></ol>
-          </div>
-        </div>
-
         <button type="button" id="btn-start" class="primary">▶ 开始跑</button>
         <p class="legal-links">
           <a href="about.html">关于</a>
           · <a href="privacy.html">隐私政策</a>
-          · <span class="legal-note">抽奖示意 / 非赌</span>
         </p>
       </div>
     </div>
@@ -302,7 +332,7 @@
         <p class="slogan">勇敢牛牛，不怕困难</p>
         <p class="over-badge">GAME OVER</p>
         <h2>撞到了！</h2>
-        <p class="over-encourage">勇敢牛牛，再来一次</p>
+        <p class="over-encourage">结算完成，回到首页</p>
         <p class="result" id="over-line-dist">距离 <strong id="over-dist">0</strong> · 金币 <strong id="over-coins">0</strong></p>
         <p class="result score" id="over-line-score">得分 <strong id="over-score">0</strong></p>
         <div class="career-strip career-strip-over" aria-label="生涯累计">
@@ -320,7 +350,6 @@
           </div>
         </div>
         <p class="result" id="over-line-time">本局时长 <strong id="over-playtime">0秒</strong></p>
-        <div id="prize-banner-over" class="prize-banner compact" aria-label="跑酷抽奖与 Top3 红包（示意/非赌）"></div>
         <div id="ad-slot-over" class="ad-slot ad-slot-over" data-ad-slot="result" aria-label="展示广告位（结算页，未启用）">
           <div class="ad-slot-placeholder">
             <span class="ad-slot-badge">Ad</span>
@@ -336,13 +365,10 @@
           -->
         </div>
         <p id="over-sync" class="over-sync"></p>
-        <p id="over-lb" class="over-lb"></p>
-        <button type="button" id="btn-retry" class="primary">▶ 再来一局</button>
-        <button type="button" id="btn-change-mode" class="ghost">换地图</button>
+        <button type="button" id="btn-go-home" class="primary">返回首页</button>
         <p class="legal-links compact">
           <a href="about.html">关于</a>
           · <a href="privacy.html">隐私</a>
-          · <span class="legal-note">抽奖示意 / 非赌</span>
         </p>
       </div>
     </div>
@@ -384,7 +410,7 @@
       note: "Display only. Rewarded hit ads stay on window.__RB_REWARDED_AD (mock)."
     };
   </script>
-  <script src="game.js?v=career1"></script>
-  <script src="sync.js?v=career1"></script>
+  <script src="game.js?v=home2"></script>
+  <script src="sync.js?v=home2"></script>
 </body>
 </html>

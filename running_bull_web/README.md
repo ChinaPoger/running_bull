@@ -71,13 +71,13 @@ python3 server.py
 # 浏览器打开 http://127.0.0.1:3000/mobile-web/
 ```
 
-玩法对齐「勇敢牛牛 · 手机跑酷」：竖屏三道、卡片选角色和地图（手机不用键盘）、跳跃 / 滑铲 / 换道 / 捡金币，另有飞机大战。口号是「勇敢牛牛，不怕困难」。撞障广告和抽奖都是本机示意，不加载广告或支付 SDK。
+玩法对齐「勇敢牛牛 · 手机跑酷」：竖屏三道、卡片选角色和地图（手机不用键盘）、跳跃 / 滑铲 / 换道 / 捡金币，另有飞机大战。口号是「勇敢牛牛，不怕困难」。打开后先到首页（开始游戏、全服排行榜）。撞障广告是本机示意，不加载广告或支付 SDK。
 
 和后台的关系：
 
 - 打开页面就会自动登录。设备号是横版同一个 `rb_device`（`localStorage`，并复制一份同名 Cookie）。不需要点按钮、不需要 PIN、也不走微信。
 - 开局 `POST /api/runs`，结算 `POST /api/runs/{id}/finish`，请求体带 `board: "portrait"`。
-- 本局金币计入共用钱包（仍按服务器的每秒上限封顶）。竖屏分数**不**写入全服 `best`，本机得分榜留在 `localStorage`，避免和横版计分互相覆盖。
+- 本局金币计入共用钱包（仍按服务器的每秒上限封顶）。竖屏分数**不**写入全服 `best`，避免和横版计分互相覆盖。首页排行榜读 `GET /api/portrait/leaderboard`，按生涯总积分、总金币、总距离（和 `portrait_totals` 同一套求和）。
 - 地址栏 `?invite=` 只在这个设备第一次建号时生效，规则和横版一样。
 - 每局结束会把竖屏分数、金币、距离、时长、角色、地图写进 `runs`（`board=portrait`）。大厅「我的竖屏记录」读 `GET /api/history`。这些记录在数据库里，重启服务还在。竖屏分数不写入全服 `best`。
 - 昵称可以改，改昵称不会换账号。
@@ -195,7 +195,8 @@ sudo nginx -t && sudo systemctl reload nginx
 | GET | `/wechat/start` | – | 已配置则跳到微信；未配置 503 |
 | GET | `/wechat/callback` | – | 微信回调，成功后回到 `/mobile-web/` |
 | POST | `/wechat/logout` | – | 清除 `rb_session` |
-| GET | `/leaderboard` | – | `{top:[{rank, id, nickname, best, equipped_char}]}` 前 20 |
+| GET | `/leaderboard` | – | `{top:[{rank, id, nickname, best, equipped_char}]}` 前 20，横版 `users.best` |
+| GET | `/portrait/leaderboard?metric=score\|coins\|distance&limit=20` | – | `{metric, board:"portrait", top:[{rank, id, nickname, value, me}], me:{id, nickname, value, rank}}`。value 是已结算竖屏对局的累计，分别对应总积分、总金币、总距离 |
 | GET | `/invite` | – | `{code, link, count, earned, reward_inviter, reward_invitee}`，`link` = `PUBLIC_URL/?invite=邀请码` |
 
 `user` 对象：`{id, nickname, coins, best, invite_code, equipped_char, equipped_bg, owned:[...], consumables:{shield, double}, invited_count, invite_earned}`
