@@ -96,6 +96,8 @@
   const REWARD_AD_SHIELD = 3.0;
   /** Consecutive ad skips without completing → force #over (raise H). */
   const REWARD_SKIP_FORCE_OVER = 2;
+  /** Successful video revives allowed in one started run. */
+  const REWARD_REVIVE_PER_RUN = 1;
   /** Near-miss graze window (adjacent lane / lateral miss). */
   const GRAZE_Z_MIN = 0.66;
   const GRAZE_Z_MAX = 0.88;
@@ -355,6 +357,8 @@
   let rewardAdToken = 0;
   /** Skips without a completed ad this run; ≥ REWARD_SKIP_FORCE_OVER → over. */
   let rewardSkipStreak = 0;
+  /** Successful video revives used this run. Reset when a new run starts. */
+  let rewardReviveUsed = 0;
   let nearMissCd = 0;
   let coinPulseT = 0;
   let landDustT = 0;
@@ -1127,6 +1131,7 @@
     pendingHitObstacle = null;
     rewardToastT = 0;
     rewardSkipStreak = 0;
+    rewardReviveUsed = 0;
     nearMissCd = 0;
     rewardAdToken += 1;
     hideRewardedAd();
@@ -1169,6 +1174,7 @@
     rewardAdT = 0;
     pendingHitObstacle = null;
     rewardSkipStreak = 0;
+    rewardReviveUsed = 0;
     nearMissCd = 0;
     rewardAdToken += 1;
     hideRewardedAd();
@@ -2132,6 +2138,8 @@
 
   function finishRewardedAdSuccess() {
     if (rewardAdPhase !== "watching") return;
+    // Watching to completion is the one revive this run. The next hit ends it.
+    rewardReviveUsed += 1;
     if (pendingHitObstacle) {
       pendingHitObstacle.alive = false;
       pendingHitObstacle = null;
@@ -2172,9 +2180,13 @@
     // Keep rewardAdPhase = "watching"; do not clear pendingHitObstacle.
   }
 
-  /** Soft hit: no Game Over — rewarded ad mock; complete → pass + prop. */
+  /** Soft hit: rewarded-video revive, at most once per started run. */
   function triggerRewardedAd(e) {
     if (isRewardedAdOpen() || deathFx || dead) return;
+    if (rewardReviveUsed >= REWARD_REVIVE_PER_RUN) {
+      gameOver();
+      return;
+    }
     pendingHitObstacle = e || null;
     shakeT = Math.max(shakeT, 0.32);
     flashT = Math.max(flashT, 0.22);
