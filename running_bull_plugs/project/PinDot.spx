@@ -1,0 +1,32 @@
+// 登录面板的 PIN 显示：4 个格子，已输入的显示橙色圆点
+
+var (
+	pos  int
+	tick int
+)
+
+onCloned data => {
+	pos = data.(int)
+	setXYpos -108+(float64(pos)-1.5)*32, -12
+	hide
+	for {
+		if state == 5 {
+			if pos < len(loginPin) {
+				setCostume 0
+			} else {
+				setCostume 1
+			}
+			if !visible {
+				show
+				setLayer Front
+			}
+			tick++
+			if tick%8 == 3 {
+				setLayer Front
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

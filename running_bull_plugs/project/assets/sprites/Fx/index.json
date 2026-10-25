@@ -1,0 +1,64 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 46.0,
+      "y": 24.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "plus10",
+      "path": "plus10.png",
+      "builder_id": "OdignV8PaJ0sNk8UqPnSA",
+      "imageWidth": 92,
+      "imageHeight": 48
+    },
+    {
+      "x": 14.0,
+      "y": 14.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "spark",
+      "path": "spark.png",
+      "builder_id": "Sk2An3KYUFLYBFFhNZNmf",
+      "imageWidth": 28,
+      "imageHeight": 28
+    },
+    {
+      "x": 20.0,
+      "y": 20.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "dust",
+      "path": "dust.png",
+      "builder_id": "ZT7X0MgCz8ltEpNLID1x2",
+      "imageWidth": 40,
+      "imageHeight": 40
+    },
+    {
+      "x": 46.0,
+      "y": 24.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "plus20",
+      "path": "plus20.png",
+      "builder_id": "h6WdextjLbHHp1A1gArhg",
+      "imageWidth": 92,
+      "imageHeight": 48
+    }
+  ],
+  "builder_id": "7U72PaA7gwGnZ0LLeakUF"
+}

@@ -1,0 +1,49 @@
+// 特效（v3 打击感）：金币“+10”飘字、撞车火花、落地扬尘
+// 由舞台的 spawnFx 克隆出来，自己播放约半秒的动画后删除。data = [种类, x, y, vx, vy]
+//   种类 0 = +10 飘字（慢慢上浮），3 = +20 飘字（双倍金币），1 = 火花（向外飞溅、受重力下落、旋转），2 = 扬尘（向两边散开并变大）
+
+var (
+	fk   int
+	fx   float64
+	fy   float64
+	vx   float64
+	vy   float64
+	life int
+)
+
+onCloned data => {
+	d := data.([]float64)
+	fk = int(d[0])
+	fx = d[1]
+	fy = d[2]
+	vx = d[3]
+	vy = d[4]
+	setCostume fk
+	setXYpos fx, fy
+	if fk == 2 {
+		setSize 0.85
+	} else {
+		setSize 1
+	}
+	life = 0
+	show
+	setLayer Front
+	for life < 30 {
+		life++
+		fx += vx
+		fy += vy
+		if fk == 1 {
+			vy -= 0.35
+			turn 15
+		} else if fk == 0 || fk == 3 {
+			vy *= 0.93
+		} else {
+			vx *= 0.9
+			changeSize 0.04
+		}
+		setXYpos fx, fy
+		setGraphicEffect GhostEffect, float64(life)*100/30
+		waitNextFrame
+	}
+	deleteThisClone
+}

@@ -1,0 +1,36 @@
+// 路边装饰（竖版）：草原是树、沙漠是仙人掌、夜晚是路灯，在路两边从远处往近处跑，增加速度感
+
+var (
+	side int     // 0 = 左边，1 = 右边
+	z    float64
+	m    int     // 生成时的地图
+)
+
+onCloned data => {
+	side = data.(int)
+	m = curMap
+	setCostume m
+	z = ZFAR + 200
+	setLayer Back
+	show
+	for state != 2 && m == curMap {
+		if !frozen {
+			z -= curSpeed
+		}
+		s := pscale(z)
+		x := 225 * s
+		if side == 0 {
+			x = -x
+		}
+		setXYpos x, groundYAt(z)
+		setSize s * OSZ
+		if z < 40 {
+			deleteThisClone // 快到画面边缘：删除
+		}
+		waitNextFrame
+	}
+	for state == 2 && m == curMap {
+		waitNextFrame
+	}
+	deleteThisClone
+}

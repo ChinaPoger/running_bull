@@ -1,0 +1,47 @@
+// HUD 标签（分数 / 金币 / 最高 / 钱包 / 护盾 / 倍数 / 排名），数字由 Txt 画在标签右半边
+
+var (
+	kind int
+	tick int
+)
+
+func pillX() float64 {
+	switch kind {
+	case 0, 4, 6:
+		return -180
+	case 1, 5:
+		return -70
+	case 2:
+		return 40
+	}
+	return 180
+}
+
+func pillY() float64 {
+	switch kind {
+	case 4, 5:
+		return 134
+	case 6:
+		return -128
+	}
+	return 162
+}
+
+onCloned data => {
+	kind = data.(int)
+	setCostume kind
+	setXYpos pillX(), pillY()
+	hide
+	for {
+		if pillOn(kind) {
+			if !visible {
+				show
+				setLayer Front
+				tick = 0
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

@@ -1,0 +1,15 @@
+// 标题 / 游戏结束面板
+
+func showTitle() {
+	setCostume "title"
+	setXYpos 0, 40
+	show
+	setLayer Front
+}
+
+func showOver() {
+	setCostume "over"
+	setXYpos 0, 40
+	show
+	setLayer Front
+}

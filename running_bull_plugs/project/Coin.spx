@@ -1,0 +1,68 @@
+// 金币（竖版）：在车道上排成一串从远处跑来；和大角牛在同一车道、跑到身边时收集（跳太高会漏掉）。
+// 冲刺时有磁铁效果：附近的金币自动飞向大角牛。
+
+var (
+	myLane  int
+	z       float64
+	inFront bool
+	flying  bool
+	fx      float64
+	fy      float64
+)
+
+onCloned data => {
+	code := data.(int)
+	myLane = code % 10
+	z = ZFAR + 110*float64(code/10)
+	inFront = false
+	flying = false
+	hide
+	setLayer Back
+	for state == 1 {
+		if flying {
+			// 磁铁：飞向大角牛
+			tx := bullX
+			ty := GY + 38 + jumpH*OSZ
+			fx += (tx - fx) * 0.3
+			fy += (ty - fy) * 0.3
+			setXYpos fx, fy
+			if absf(fx-tx) < 14 && absf(fy-ty) < 18 {
+				addCoinAt(fx, fy)
+				deleteThisClone
+			}
+		} else {
+			if !frozen {
+			if !frozen {
+				z -= curSpeed
+			}
+		}
+			if z <= ZFAR && !visible {
+				show
+			}
+			s := pscale(z)
+			fx = laneX(myLane) * s
+			fy = groundYAt(z) + 18*s
+			setXYpos fx, fy
+			setSize s * 1.05
+			if boostTime > 0 && z < 500 && z > 0 {
+				flying = true
+				setLayer Front
+			} else if z <= HITZ && z > -40 && myLane == bullLane && jumpH < 75 {
+				addCoinAt(fx, fy)
+				deleteThisClone
+			}
+			if !inFront && z <= 0 {
+				inFront = true
+				setLayer Front
+			}
+			if z < -60 {
+				deleteThisClone
+			}
+		}
+		waitNextFrame
+	}
+	for state == 2 {
+		waitNextFrame
+	}
+	deleteThisClone
+}

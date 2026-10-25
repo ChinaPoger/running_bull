@@ -1,0 +1,105 @@
+// 路障（竖版）：克隆体从远处（z = ZFAR，画面上方、很小）向大角牛跑来，越近越大。
+// 种类 kind：0 = 低栏，1 = 石堆（这两种要跳过），2 = 高门（要滑铲钻过），3 = 草垛，4 = 木箱（这两种要换道躲开）
+// 图层：还在大角牛前方（z > 0）时画在牛的后面；一旦跑过牛（z <= 0，离镜头更近）就提到最前面，
+// 所以跳过低栏、钻过高门时能看出前后关系；地面上还有障碍自己的影子。
+
+var (
+	myLane  int
+	kind    int
+	z       float64 // 离大角牛的距离
+	inFront bool
+	checked bool    // 是否已经做过碰撞判定
+	hitDone bool
+)
+
+// 种类 → 躲法：0 = 跳，1 = 滑铲，2 = 换道
+func category() int {
+	if kind <= 1 {
+		return 0
+	} else if kind == 2 {
+		return 1
+	}
+	return 2
+}
+
+func place() {
+	s := pscale(z)
+	setXYpos laneX(myLane)*s, groundYAt(z)
+	setSize s * OSZ
+}
+
+func smash() {
+	// 冲刺 / 无敌 / 护盾：把障碍撞飞
+	hitDone = true
+	dist += 20
+	dir := 1.0
+	if myLane == 0 {
+		dir = -1
+	}
+	for i := 0; i < 15; i++ {
+		changeXYpos 9*dir, 10
+		turn 24 * dir
+		changeGraphicEffect GhostEffect, 7
+		waitNextFrame
+	}
+	deleteThisClone
+}
+
+onCloned data => {
+	code := data.(int)
+	myLane = code % 10
+	kind = code / 10
+	setCostume kind
+	setHeading 90
+	z = ZFAR
+	inFront = false
+	checked = false
+	hitDone = false
+	place
+	setLayer Back // 新出现的最远，放到所有角色后面（背景之上）
+	if curMap == 2 {
+		setGraphicEffect BrightnessEffect, -25 // 夜晚地图：障碍也暗一点
+	}
+	show
+	for state == 1 {
+		if !hitDone && !frozen {
+			z -= curSpeed
+		}
+		place
+		if !inFront && z <= 0 {
+			inFront = true
+			setLayer Front // 跑过大角牛：现在离镜头更近，挡在牛前面
+		}
+		if reviveClear > 0 && z < 900 {
+			deleteThisClone // 复活时清掉前方近处的障碍
+		}
+		if !checked && !frozen && z <= HITZ {
+			checked = true
+			if myLane == bullLane {
+				blocked := true
+				if category() == 0 {
+					blocked = jumpH < 28
+				} else if category() == 1 {
+					blocked = !sliding
+				}
+				if blocked {
+					if boostTime > 0 || invT > 0 {
+						smash
+					} else if onHit() {
+						smash // 护盾挡住了
+					} else {
+						hitDone = true // 进入复活选择或游戏结束
+					}
+				}
+			}
+		}
+		if z < -70 {
+			deleteThisClone // 跑出画面下方
+		}
+		waitNextFrame
+	}
+	for state == 2 {
+		waitNextFrame
+	}
+	deleteThisClone
+}

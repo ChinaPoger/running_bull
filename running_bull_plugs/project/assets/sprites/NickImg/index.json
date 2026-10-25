@@ -1,0 +1,218 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n0",
+      "path": "n0.png",
+      "builder_id": "Rz3jjWQ8813zF1MM7RZil",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n1",
+      "path": "n1.png",
+      "builder_id": "pKGghajnpmuqvs98NKTAH",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n2",
+      "path": "n2.png",
+      "builder_id": "b6ADNd80yN2sOu1RRjv98",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n3",
+      "path": "n3.png",
+      "builder_id": "GCB7EwD4UZkIN5Ul5LOrU",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n4",
+      "path": "n4.png",
+      "builder_id": "EukGcRbNyukxtj3P1Vzx7",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n5",
+      "path": "n5.png",
+      "builder_id": "2VhoQxmyK3b7e9ApmjSod",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n6",
+      "path": "n6.png",
+      "builder_id": "y8OiE08iEGRsXkbIGvbWA",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n7",
+      "path": "n7.png",
+      "builder_id": "IGoCsr3s22UcoSy4CbSB6",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "n8",
+      "path": "n8.png",
+      "builder_id": "IUvxjYCq1w6gVOZy9k3Dx",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w0",
+      "path": "w0.png",
+      "builder_id": "fS7eUNrgqExQ2JOKbQe0h",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w1",
+      "path": "w1.png",
+      "builder_id": "BmyJVwPvAleJChjMRjdC1",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w2",
+      "path": "w2.png",
+      "builder_id": "FxhzBZGrTw0rpi09aKJTR",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w3",
+      "path": "w3.png",
+      "builder_id": "8oOHLBLngGktTUcRMDpNt",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w4",
+      "path": "w4.png",
+      "builder_id": "Dw5kaxzRerh2zF7iLT6Ws",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w5",
+      "path": "w5.png",
+      "builder_id": "zoGhXHPeizzRUbiOX7XsN",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w6",
+      "path": "w6.png",
+      "builder_id": "Yih2rXSRo1IcQDnKVJGw6",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w7",
+      "path": "w7.png",
+      "builder_id": "yTvs2yetoFUX9i2m1J8rf",
+      "imageWidth": 400,
+      "imageHeight": 56
+    },
+    {
+      "x": 200.0,
+      "y": 28.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "w8",
+      "path": "w8.png",
+      "builder_id": "qWtLe5yXf9H66qwJ9FMvY",
+      "imageWidth": 400,
+      "imageHeight": 56
+    }
+  ],
+  "builder_id": "jbetkG6NFu7nqGDe675yr"
+}

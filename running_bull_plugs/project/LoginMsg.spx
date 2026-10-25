@@ -1,0 +1,25 @@
+// 登录面板的提示条（固定的几句提示图，见 main.spx 的 setMsg）
+
+var (
+	tick int
+)
+
+onStart => {
+	hide
+	for {
+		if state == 5 {
+			setCostume msgId
+			if !visible {
+				show
+				setLayer Front
+			}
+			tick++
+			if tick%8 == 5 {
+				setLayer Front
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

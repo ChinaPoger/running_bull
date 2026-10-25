@@ -1,0 +1,75 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 100.0,
+      "y": 112,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "hurdle",
+      "path": "hurdle.png",
+      "builder_id": "KsOBVXKJhdiTKnIyDDSVm",
+      "imageWidth": 200,
+      "imageHeight": 128
+    },
+    {
+      "x": 84.0,
+      "y": 84,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "rocks",
+      "path": "rocks.png",
+      "builder_id": "Oq32caWMTyC9rgKmtjtpr",
+      "imageWidth": 168,
+      "imageHeight": 96
+    },
+    {
+      "x": 104.0,
+      "y": 252,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "gate",
+      "path": "gate.png",
+      "builder_id": "kXVzsIyKVL4CGB5Izmp8V",
+      "imageWidth": 208,
+      "imageHeight": 268
+    },
+    {
+      "x": 92.0,
+      "y": 172,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "hay",
+      "path": "hay.png",
+      "builder_id": "v5rvMLiFqdnPelff8ictC",
+      "imageWidth": 184,
+      "imageHeight": 184
+    },
+    {
+      "x": 88.0,
+      "y": 172,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "crate",
+      "path": "crate.png",
+      "builder_id": "nmdnCFvrlfleUUeTMZZkL",
+      "imageWidth": 176,
+      "imageHeight": 184
+    }
+  ],
+  "builder_id": "kWRPUjfVG8kl1w4J8Koau"
+}

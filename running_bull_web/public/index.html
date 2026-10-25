@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>大角牛快跑 · 网页原型</title>
+<link rel="icon" href="assets/coin.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv" width="960" height="720"></canvas>
+
+  <!-- 局内 HUD -->
+  <div id="hud" class="hidden">
+    <div class="pill">分数 <b id="hScore">0</b></div>
+    <div class="pill">金币 <b id="hCoins">0</b><span id="hDouble" class="tag hidden">×2</span></div>
+    <div class="pill hidden" id="hBoost">冲刺 <b id="hBoostT">0</b></div>
+    <div class="pill hidden" id="hShield">🛡 护盾</div>
+    <button id="btnMute" class="mini">🔊</button>
+  </div>
+  <div id="touchBtns" class="hidden">
+    <button id="tbSlide" class="tbtn">滑</button>
+    <button id="tbJump" class="tbtn">跳</button>
+  </div>
+
+  <!-- 标题 / 大厅 -->
+  <div id="lobby" class="screen">
+    <h1>大角牛快跑</h1>
+    <div class="sub">网页原型 · 概念演示</div>
+    <div class="profile">
+      <span id="lNick">牛友</span> <button class="link" id="btnNick">改昵称</button>
+      <div class="stats">💰 <b id="lCoins">0</b> 金币 · 🏆 最高 <b id="lBest">0</b></div>
+    </div>
+    <img id="lChar" class="charPreview" src="assets/bull_run1.png" alt="">
+    <div class="opts">
+      <label><input type="checkbox" id="optShield"> 用无敌护盾（剩 <span id="nShield">0</span>）</label>
+      <label><input type="checkbox" id="optDouble"> 用双倍金币（剩 <span id="nDouble">0</span>）</label>
+    </div>
+    <button class="big" id="btnStart">开 跑！</button>
+    <div class="row">
+      <button id="btnShop">🛒 商店</button>
+      <button id="btnTopup">💎 充值<small>示意</small></button>
+      <button id="btnInvite">🎁 邀请</button>
+      <button id="btnRank">🏆 排行</button>
+    </div>
+    <div class="help">电脑：↑/↓ 或 W/S 换道，J 或空格 跳，K 滑铲 · 手机：点右半屏跳、左半屏滑，上下滑动换道</div>
+  </div>
+
+  <!-- 通用弹窗 -->
+  <div id="modal" class="screen hidden">
+    <div class="card">
+      <button class="close" id="mClose">✕</button>
+      <h2 id="mTitle"></h2>
+      <div id="mBody"></div>
+    </div>
+  </div>
+
+  <!-- 复活 -->
+  <div id="revive" class="screen hidden">
+    <div class="card center">
+      <h2>撞上啦！</h2>
+      <p>本局还有一次复活机会</p>
+      <button class="big" id="rvAd">📺 看广告复活 <small>示意</small></button>
+      <button class="big alt" id="rvCoin">💰 花 <span id="rvCost">100</span> 金币复活</button>
+      <button class="link" id="rvGiveUp">不了，结算</button>
+    </div>
+  </div>
+  <div id="ad" class="screen hidden">
+    <div class="adbox">
+      <div class="adtag">示意广告 · 测试用，非真实广告</div>
+      <div class="adcontent">🐂 这里将来接入激励视频广告<br>（例如微信小游戏广告）</div>
+      <div class="adcount"><span id="adSec">3</span> 秒后复活</div>
+    </div>
+  </div>
+
+  <!-- 结算 -->
+  <div id="over" class="screen hidden">
+    <div class="card center">
+      <h2>本局结束</h2>
+      <div id="oRecord" class="record hidden">🎉 新纪录！</div>
+      <div class="bignum" id="oScore">0</div>
+      <p>获得金币 <b id="oEarned">0</b> · 全服第 <b id="oRank">-</b> 名</p>
+      <p class="note" id="oNote"></p>
+      <button class="big" id="oAgain">再来一局</button>
+      <button class="link" id="oBack">回大厅</button>
+    </div>
+  </div>
+  <div id="toast" class="hidden"></div>
+</div>
+<div id="rotateTip">📱 横过来玩更爽：请把手机横屏</div>
+<script src="audio.js"></script>
+<script src="api.js"></script>
+<script src="game.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

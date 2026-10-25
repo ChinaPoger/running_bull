@@ -1,0 +1,45 @@
+// 加速道具（闪电，竖版）：吃到后冲刺约 5 秒——速度更快、无敌撞飞路障、磁铁吸金币
+
+var (
+	myLane  int
+	z       float64
+	bobT    float64
+	inFront bool
+)
+
+onCloned data => {
+	myLane = data.(int)
+	z = ZFAR
+	bobT = 0
+	inFront = false
+	setLayer Back
+	show
+	for state == 1 {
+		if !frozen {
+			if !frozen {
+				z -= curSpeed
+			}
+		}
+		bobT++
+		s := pscale(z)
+		setXYpos laneX(myLane)*s, groundYAt(z)+(26+6*float64(int(bobT/8)%2))*s
+		setSize s
+		if z <= HITZ && z > -40 && myLane == bullLane && jumpH < 80 {
+			startBoost()
+			// （不再冒“冲呀！”气泡，闪光和速度就是提示）
+			deleteThisClone
+		}
+		if !inFront && z <= 0 {
+			inFront = true
+			setLayer Front
+		}
+		if z < -60 {
+			deleteThisClone
+		}
+		waitNextFrame
+	}
+	for state == 2 {
+		waitNextFrame
+	}
+	deleteThisClone
+}

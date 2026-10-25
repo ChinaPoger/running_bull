@@ -1,0 +1,206 @@
+{
+  "backdrops": [
+    {
+      "name": "farm0",
+      "path": "bd_farm_0.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "5B61E78XGX195BUyphngh",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "farm1",
+      "path": "bd_farm_1.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "Cg4dvmq129OZFGOyWxTcl",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "farm2",
+      "path": "bd_farm_2.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "KTs0EGimLCFvvLuPJ2hUA",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "farm3",
+      "path": "bd_farm_3.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "MVEXldUE3GItWrCDzkGVw",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "desert0",
+      "path": "bd_desert_0.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "vwfTluHHi8M1rNlmJeB90",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "desert1",
+      "path": "bd_desert_1.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "HIb7xwIMb9merYfLwaFId",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "desert2",
+      "path": "bd_desert_2.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "tPeURXXRWu1NBm7Dbvjqa",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "desert3",
+      "path": "bd_desert_3.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "RhiLfFVnrWe7CqlAA3BPk",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "night0",
+      "path": "bd_night_0.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "fPCmLeihjXxwwkacZbujM",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "night1",
+      "path": "bd_night_1.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "S3eVPusmo31JTfFevMh2F",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "night2",
+      "path": "bd_night_2.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "V9ky1ZyfzOaiFak1mfD8W",
+      "imageWidth": 960,
+      "imageHeight": 720
+    },
+    {
+      "name": "night3",
+      "path": "bd_night_3.png",
+      "x": 480.0,
+      "y": 360.0,
+      "bitmapResolution": 2,
+      "builder_id": "FgmLvdwVLtGv36z2td5Qb",
+      "imageWidth": 960,
+      "imageHeight": 720
+    }
+  ],
+  "backdropIndex": 0,
+  "map": {
+    "width": 480,
+    "height": 360,
+    "mode": "fillRatio"
+  },
+  "run": {
+    "width": 480,
+    "height": 360
+  },
+  "camera": {
+    "on": ""
+  },
+  "physics": false,
+  "autoSetCollisionLayer": true,
+  "layerSortMode": "",
+  "audioAttenuation": 0,
+  "audioMaxDistance": 768,
+  "zorder": [
+    "Obstacle",
+    "Deco",
+    "Coin",
+    "Boost",
+    "Shadow",
+    "Bull",
+    "Fx",
+    "Flash",
+    "NewRecord",
+    "Panel",
+    "ShopBtn",
+    "AcctBtn",
+    "Shop",
+    "ShopCard",
+    "ShopCursor",
+    "ShopClose",
+    "Revive",
+    "Login",
+    "NickImg",
+    "PinDot",
+    "LoginMsg",
+    "Pill",
+    "Badge",
+    "Txt",
+    "Toast"
+  ],
+  "builder_spriteOrder": [
+    "kWRPUjfVG8kl1w4J8Koau",
+    "9taCnP73SK0YoPvC3eXIZ",
+    "eP0fwJMYQKMahI69pJllZ",
+    "kpyTs1H9ImCLtfcBC34tR",
+    "0LOPjHqv98Sy7ceWI9wJe",
+    "gtaAW6ZZpwUCVOyHqqJ2B",
+    "7U72PaA7gwGnZ0LLeakUF",
+    "nW8VHci5Vg4DawqmXX0m6",
+    "p0TRAunIj9eHrJVWlc6VL",
+    "W5GnLxx04SvPFgTTIj2oy",
+    "dsAokhjdyxLyf0is5Joff",
+    "kjT66khffjSJaXGpRBaeY",
+    "ZjNV3YTycTkPGCfeJDYob",
+    "hyZKhXWP0UBuJvQ2JUAMI",
+    "FzAMfXcGWC5AEdrfL7C2j",
+    "LU1dssPUFjpbctkh8SrDL",
+    "7IWPxz4bgs8hWDZHM2INM",
+    "pLOerLmFfj6D57nyz46Oo",
+    "jbetkG6NFu7nqGDe675yr",
+    "nHDoLMTObs7iINoszad37",
+    "mjF70sbLkRyHBb0Td69IV",
+    "jWqYktQ3vj0Oqi0TnLnT0",
+    "bB0Dm0rlXk9oCuyKdQLg5",
+    "DpiVWF2SJPzhWBW572M5s",
+    "G1PqpX2wzYWFvzmUa3Vsb"
+  ],
+  "builder_soundOrder": [
+    "3FvcFWF8grqbBf7Z5ngFY",
+    "ulMxe7SW0820de907ZuGO",
+    "qpDk1yVr7NUfoQiD7V57J",
+    "IZUhszQ4CWZVt0ZGpoELF",
+    "VBiwjmFvNZg4GHtGmLaXR",
+    "X1fxhShM4kXCSy75mEtTZ",
+    "5B6bZk6P5s55SsM2ajdzA"
+  ],
+  "maxFPS": 60
+}

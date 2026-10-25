@@ -1,0 +1,1440 @@
+// 大角牛快跑 · 竖版（running_bull_plugs）—— 舞台：全局状态、透视投影、计分、生成障碍、键盘与触屏控制、联网账号
+// 画面是“背后视角”：三条车道（左 / 中 / 右）伸向远处的地平线，障碍、金币从远处（小、在上面）跑到近处（大、在下面）
+// 舞台是 480x360：XBuilder 的运行窗口固定是 4:3（480x360），更高的舞台会被裁掉，所以竖向玩法放在这个画面里。
+// 分数、金币、昵称、PIN、提示都画在游戏画面里（Pill / Txt / NickImg / PinDot / LoginMsg 角色），不用变量监视器。
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"strings"
+)
+
+// 线上后端地址（唯一需要改的地方）。本地调试可以改成 "http://127.0.0.1:3000/api"
+const apiBase = "https://bull.lingecho.com/api"
+
+var (
+	state      int     // 0 = 标题，1 = 游戏中，2 = 游戏结束
+	score      int     // 分数（monitor 显示）
+	coins      int     // 金币（monitor 显示）
+	best       int     // 最高分（monitor 显示，本次会话内保留）
+	boostLeft  int     // 冲刺剩余秒数（monitor 显示）
+	newRecord  bool    // 本局是否刷新纪录
+	bullLane   int     // 大角牛所在车道：0 = 左，1 = 中，2 = 右
+	bullX      float64 // 大角牛当前的 x 坐标（换道时平滑移动）
+	jumpH      float64 // 大角牛离地高度（> 0 表示在空中）
+	sliding    bool    // 是否在滑铲
+	speed      float64 // 基础速度（像素/帧），随时间变快
+	curSpeed   float64 // 当前实际滚动速度（冲刺时更快）
+	boostTime  float64 // 冲刺剩余帧数
+	dist       float64 // 跑过的距离（换算成分数）
+	frames     float64 // 本局已进行的帧数
+	spawnGap   float64 // 距离下一排障碍还要跑多远
+	overFrames int     // 游戏结束后经过的帧数（防止误触立刻重开）
+	ptrDown    bool    // 鼠标 / 手指是否按下
+	ptrSwiped  bool    // 这次按下是否已经算作一次滑动
+	ptrX       float64 // 按下时的位置
+	ptrY       float64
+	shakeX     float64 // 冲刺时的画面抖动偏移（路面 / 大角牛 / 影子会加上它）
+	shakeY     float64
+	roadZ      float64 // 路面滚动距离（决定背景用 4 个滚动相位中的哪一张）
+	bdIdx      int     // 当前背景造型序号
+	decoGap    float64 // 距离下一对路边装饰还要跑多远
+	// ---- v4：钱包 / 商店 / 复活 ----
+	// 注意：spx v3.3.0 没有本地存储接口，下面这些只在本次打开游戏期间有效，刷新网页就清零
+	wallet      int     // 钱包金币：每局结束把本局金币存进来，跨局累计
+	charOwned   int     // 已拥有的角色（二进制位：1 = 大角牛，2 = 粉粉猪，4 = 咩咩羊）
+	mapOwned    int     // 已拥有的地图（1 = 草原，2 = 沙漠，4 = 夜晚）
+	curChar     int     // 当前角色 0 / 1 / 2
+	curMap      int     // 当前地图 0 / 1 / 2
+	shieldCnt   int     // 持有的无敌护盾（下一局开局自动带上 1 个）
+	doubleCnt   int     // 持有的双倍金币卡（下一局开局自动用 1 张）
+	runShield   int     // 本局还剩几次护盾（monitor 显示）
+	coinMul     int     // 本局金币倍数 1 / 2（monitor 显示）
+	shopSel     int     // 商店里键盘选中的卡片 0..7
+	revived     bool    // 本局是否已经复活过
+	frozen      bool    // 撞车后等待复活选择时，整个游戏暂停
+	reviveMode  int     // 0 = 无，1 = 正在选择，2 = 正在看示意广告
+	adT         int     // 示意广告剩余帧数
+	invT        float64 // 无敌剩余帧数（复活 / 护盾之后）
+	reviveClear int     // 复活瞬间清掉附近障碍（持续几帧）
+	crashFxDone bool    // 撞车特效是否已经播过（复活选择时已播，放弃后不再重复）
+	// ---- v5：联网账号（昵称 + 4 位 PIN），数据存在线上服务器 ----
+	online    bool   // true = 已登录，钱包 / 解锁 / 最高分都以服务器为准
+	token     string // 登录后的会话令牌
+	runId     string // 服务器上这一局的编号
+	adId      string // 示意广告编号（服务器要求看满 3 秒才能复活）
+	netState  string // 账号状态（文字版，只用于日志）：在线 · 昵称 / 游客 / 离线
+	netKind   int    // 账号徽章：0 = 不显示，1 = 在线，2 = 游客，3 = 离线
+	acctNick  string // 登录成功后的昵称
+	rank      int    // 全服排名（0 = 还没有）
+	msgId     int    // 登录面板上的提示图序号（见 setMsg）
+	txtCache  []string // 每帧算好的文字（Txt 角色按槽位读取）
+	loginNick string // 登录面板上的昵称
+	loginPin  string // 输入中的 PIN（只在内存里）
+	pinShow   string // PIN 显示成 ● ● _ _
+	loginMsg  string // 登录面板上的提示
+	nickIdx   int    // 预设昵称序号
+	srvPrice  []any  // 服务器下发的价格（8 张卡片）
+	netFails  int    // 连续网络失败次数
+	netBusy   bool   // 正在等服务器回复（这时不接受新的联网操作）
+	asking    bool   // 正在用输入框输入昵称（这时键盘不当快捷键用）
+)
+
+const reviveCost = 100
+
+// ---------------- 画面里的文字 ----------------
+// 登录面板提示：只显示固定的几句（提示图 msg_0 ~ msg_10），服务器的错误按关键字归类
+func setMsg(id int) {
+	msgId = id
+	loginMsg = itoa(id)
+}
+
+func errMsgId(e string) int {
+	if strings.Contains(e, "已经被注册") {
+		return 4
+	} else if strings.Contains(e, "没有这个昵称") || strings.Contains(e, "账号不存在") {
+		return 5
+	} else if strings.Contains(e, "PIN 错太多") || strings.Contains(e, "次数太多") || strings.Contains(e, "锁定") {
+		return 7
+	} else if strings.Contains(e, "PIN 不对") {
+		return 6
+	} else if strings.Contains(e, "过期") {
+		return 8
+	} else if strings.Contains(e, "昵称不能为空") {
+		return 9
+	} else if strings.Contains(e, "PIN") {
+		return 1
+	}
+	return 10
+}
+
+// 昵称是否是 8 个预设之一：是的话返回序号（显示预设图片），否则 -1
+func presetIdx(n string) int {
+	for i := 0; i < 8; i++ {
+		if presetNick(i) == n {
+			return i
+		}
+	}
+	return -1
+}
+
+func isAscii(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < 32 || s[i] > 126 {
+			return false
+		}
+	}
+	return true
+}
+
+// 文字槽位：0 登录面板昵称（自己输入的英文 / 数字昵称），1 分数，2 金币，3 最高分，4 钱包，5 护盾，6 金币倍数，7 排名，8 账号行昵称
+const TXTN = 9
+
+func txtMax(slot int) int {
+	if slot == 0 || slot == 8 {
+		return 16
+	}
+	return 7
+}
+
+func txtX(slot int) float64 {
+	switch slot {
+	case 0:
+		return -108
+	case 1, 5, 7:
+		return -160
+	case 2, 6:
+		return -50
+	case 3:
+		return 60
+	case 4:
+		return 200
+	}
+	return -168
+}
+
+func txtY(slot int) float64 {
+	switch slot {
+	case 0:
+		return 81
+	case 5, 6:
+		return 134
+	case 7:
+		return -128
+	case 8:
+		return -158
+	}
+	return 162
+}
+
+// 对齐：0 = 左对齐，0.5 = 居中
+func txtAlign(slot int) float64 {
+	if slot == 8 {
+		return 0
+	}
+	return 0.5
+}
+
+func hudOn() bool {
+	return state == 0 || state == 1 || state == 2
+}
+
+func acctOn() bool {
+	return (state == 0 || state == 2) && netKind > 0
+}
+
+// 每帧把要显示的文字算好放进 txtCache（空字符串 = 不显示）
+func updateTexts() {
+	for i := 0; i < TXTN; i++ {
+		txtCache[i] = ""
+	}
+	if state == 5 {
+		if presetIdx(loginNick) < 0 && isAscii(loginNick) {
+			txtCache[0] = loginNick
+		}
+		return
+	}
+	if hudOn() {
+		txtCache[1] = itoa(score)
+		txtCache[2] = itoa(coins)
+		txtCache[3] = itoa(best)
+	}
+	if state == 0 || state == 2 || state == 3 {
+		txtCache[4] = itoa(wallet)
+	}
+	if state == 1 && runShield > 0 {
+		txtCache[5] = itoa(runShield)
+	}
+	if state == 1 && coinMul > 1 {
+		txtCache[6] = "x" + itoa(coinMul)
+	}
+	if acctOn() && netKind == 1 {
+		if rank > 0 {
+			txtCache[7] = itoa(rank)
+		}
+		if presetIdx(acctNick) < 0 && isAscii(acctNick) {
+			txtCache[8] = acctNick
+		}
+	}
+}
+
+// HUD 标签是否显示：0 分数 1 金币 2 最高 3 钱包 4 护盾 5 倍数 6 排名
+func pillOn(k int) bool {
+	if k <= 2 {
+		return hudOn()
+	} else if k == 3 {
+		return state == 0 || state == 2 || state == 3
+	} else if k == 4 {
+		return state == 1 && runShield > 0
+	} else if k == 5 {
+		return state == 1 && coinMul > 1
+	}
+	return acctOn() && netKind == 1 && rank > 0
+}
+
+// ---------------- 透视投影 ----------------
+// z = 物体在大角牛前方多远（0 = 和大角牛并排，越大越远）。
+// 缩放 s = FOC / (FOC + z)：远处小、近处大；屏幕 y 在地平线 HOR 和牛脚下 GY 之间按 s 插值；x = 车道中心 × s
+const (
+	HOR  = 70.0   // 地平线（舞台 y）
+	GY   = -150.0 // 大角牛脚下的地面（舞台 y）
+	OSZ  = 0.75   // 物体整体缩放（480x360 画面里障碍 / 角色画小一点）
+	FOC  = 250.0  // 焦距：越大，远处的东西缩得越慢
+	ZFAR = 2200.0 // 障碍出现的距离
+	HITZ = 12.0   // 障碍跑到这个距离以内就判定碰撞
+)
+
+func pscale(z float64) float64 {
+	return FOC / (FOC + z)
+}
+
+func groundYAt(z float64) float64 {
+	return HOR + (GY-HOR)*pscale(z)
+}
+
+// 车道 l 的中心 x（在大角牛那一排，s = 1 时）
+func laneX(l int) float64 {
+	return 90 * float64(l-1)
+}
+
+// 根据路面滚动距离切换背景（每张地图 4 个相位：虚线、路面条纹一格一格往下移）
+func updateRoad() {
+	idx := curMap*4 + int(roadZ/100)%4
+	if idx != bdIdx {
+		bdIdx = idx
+		setBackdrop idx
+	}
+}
+
+func absf(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func startGame() {
+	if netBusy {
+		return
+	}
+	score = 0
+	coins = 0
+	dist = 0
+	frames = 0
+	boostTime = 0
+	boostLeft = 0
+	newRecord = false
+	bullLane = 1
+	jumpH = 0
+	sliding = false
+	speed = 18
+	curSpeed = speed
+	spawnGap = 1200 // 开局先空跑一小段
+	revived = false
+	frozen = false
+	reviveMode = 0
+	invT = 0
+	reviveClear = 0
+	crashFxDone = false
+	bdIdx = -1
+	updateRoad()
+	// 道具：开局自动使用（每样每局最多 1 个）
+	runShield = 0
+	coinMul = 1
+	runId = ""
+	started := false
+	if online {
+		r := api("/xb/start", {})
+		if r == nil {
+			if !netFail() {
+				return // 网络抖了一下：先不开局，提示玩家再按一次
+			}
+		} else if ok(r) {
+			started = true
+			runId = str(r, "run")
+			applyProfile(r)
+			runShield = num(r, "run_shield")
+			coinMul = 1 + num(r, "run_double")
+		} else {
+			goOffline(str(r, "err"))
+		}
+	}
+	if !started {
+		if shieldCnt > 0 {
+			shieldCnt--
+			runShield = 1
+		}
+		if doubleCnt > 0 {
+			doubleCnt--
+			coinMul = 2
+		}
+	}
+	if runShield > 0 {
+	}
+	if coinMul > 1 {
+	}
+	Panel.hide
+	play "bgm", true // 背景音乐循环播放
+	NewRecord.hide
+	Bull.reset
+	state = 1
+}
+
+func gameOver() {
+	if state != 1 {
+		return
+	}
+	state = 2
+	frozen = false
+	reviveMode = 0
+	overFrames = 0
+	curSpeed = 0
+	boostTime = 0
+	score = int(dist) + coins*10
+	finished := false
+	if online && runId != "" {
+		// 联网：成绩交给服务器结算（服务器按真实时长防作弊、发金币、记最高分和排名）
+		r := api("/xb/finish", {"run": runId, "score": score, "coins": coins / coinMul})
+		if r == nil {
+			r = api("/xb/finish", {"run": runId, "score": score, "coins": coins / coinMul}) // 成绩很重要：再试一次
+		}
+		if r == nil {
+			goOffline("网络出错")
+		} else if ok(r) {
+			finished = true
+			newRecord = r["new_record"] == true
+			applyProfile(r)
+			netState = "在线 · " + str(r, "nick") + " · 全服第 " + itoa(num(r, "rank")) + " 名"
+			rank = num(r, "rank")
+			netKind = 1
+		} else {
+			goOffline(str(r, "err"))
+		}
+		runId = ""
+	}
+	if !finished {
+		wallet += coins // 离线：本局金币存进钱包（只在本次打开期间有效）
+		if score > best {
+			best = score
+			newRecord = true
+		}
+	}
+	stopPlaying "bgm"
+	if !crashFxDone {
+		crashFx()
+	}
+	Bull.crash
+	Panel.showOver
+	if newRecord {
+		NewRecord.pop
+	}
+}
+
+// 撞车音效 + 白闪 + 火花
+func crashFx() {
+	crashFxDone = true
+	play "crash"
+	Flash.flash
+	for i := 0; i < 12; i++ {
+		spawnFx(1, bullX, GY+45+jumpH*OSZ, rand(-4.5, 4.5), rand(1.5, 7.0))
+	}
+}
+
+// 障碍撞到大角牛时调用。返回 true 表示被护盾挡住（障碍被撞飞、继续跑）
+func onHit() bool {
+	if runShield > 0 {
+		runShield--
+		if runShield == 0 {
+		}
+		invT = 60
+		play "boost"
+		Toast.pop 4
+		return true
+	}
+	if !revived {
+		offerRevive()
+	} else {
+		gameOver() // 已经复活过一次：第二次撞车直接结束
+	}
+	return false
+}
+
+// 弹出复活选择：暂停游戏
+func offerRevive() {
+	Bull.say "" // 收起气泡，免得挡住复活面板
+	frozen = true
+	curSpeed = 0
+	reviveMode = 1
+	pausePlaying "bgm"
+	crashFx()
+	Bull.crash
+	Revive.showOffer
+}
+
+// 复活选择：1 = 花金币，2 = 看示意广告，3 = 放弃
+func reviveChoose(k int) {
+	if netBusy {
+		return
+	}
+	if state != 1 || reviveMode != 1 {
+		return
+	}
+	if k == 1 {
+		if online {
+			r := api("/xb/revive", {"run": runId, "method": "coins"})
+			if r == nil {
+				if !netFail() {
+					return // 还停在复活面板，可以再点一次
+				}
+			} else if ok(r) {
+				applyProfile(r)
+				doRevive()
+				return
+			} else {
+				Toast.pop 0
+				return
+			}
+		}
+		if wallet >= reviveCost {
+			wallet -= reviveCost
+			doRevive()
+		} else {
+			Toast.pop 0
+		}
+	} else if k == 2 {
+		if online {
+			r := api("/xb/ad", {"run": runId})
+			adId = ""
+			if r == nil {
+				netFail()
+			} else {
+				adId = str(r, "ad")
+			}
+		}
+		reviveMode = 2
+		adT = 180 // 3 秒（60 帧/秒）
+	} else {
+		reviveMode = 0
+		Revive.hide
+		gameOver()
+	}
+}
+
+func doRevive() {
+	reviveMode = 0
+	Revive.hide
+	revived = true
+	frozen = false
+	crashFxDone = false
+	invT = 120 // 无敌 2 秒
+	reviveClear = 3
+	Bull.say ""
+	resumePlaying "bgm"
+	Toast.pop 5
+}
+
+// ---------------- 联网 ----------------
+// 发一个 POST 请求，返回服务器的 JSON（map）。连不上 / 超时 / 返回不是 JSON 时返回 nil。
+// （解释器里没有 io.ReadAll，所以用 json.NewDecoder 直接读响应体）
+// 令牌放在 body 里（不用自定义请求头），这样浏览器跨域时只需要服务器放行 Content-Type。
+// 登录类请求连接失败时自动重试 1 次（公网偶尔握手失败）。
+// apiSync 真正发请求（会阻塞），只能在后台 goroutine 里调用。
+func apiSync(path string, b []byte) map[string]any {
+	var resp *http.Response
+	tries := 1
+	if path == "/xb/login" || path == "/xb/profile" || path == "/xb/top" {
+		tries = 2 // 只有重复发也没副作用的请求才自动重试（买东西等不重试，免得扣两次）
+	}
+	for try := 0; try < tries; try++ {
+		req, err := http.NewRequest("POST", apiBase+path, bytes.NewReader(b))
+		if err != nil {
+			return nil
+		}
+		req.Header.Set("Content-Type", "application/json")
+		r, err := http.DefaultClient.Do(req)
+		if err == nil {
+			println "[bull] 响应状态:", path, r.StatusCode
+			resp = r
+			break
+		}
+		println "[bull] 网络错误:", path, err
+	}
+	if resp == nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		println "[bull] 解析 JSON 失败:", path, err
+		return nil
+	}
+	println "[bull] 解析成功:", path, "ok =", out["ok"], "err =", out["err"]
+	return out
+}
+
+// api 发一个请求并等结果，但**不卡住引擎**：
+// 浏览器（XBuilder 网页）里 Go 跑在 wasm 上，net/http 要等浏览器的 fetch 完成；
+// 如果在脚本协程里直接阻塞等待，引擎这一帧永远结束不了，fetch 也就永远回不来 → 画面卡死 / 变白。
+// 所以请求放到后台 goroutine 里做，当前脚本每帧 waitNextFrame 让出，直到结果到达。
+func api(path string, body map[string]any) map[string]any {
+	if token != "" {
+		body["token"] = token
+	}
+	b, _ := json.Marshal(body)
+	ch := make(chan map[string]any, 1)
+	netBusy = true
+	go func() {
+		var r map[string]any
+		defer func() {
+			if e := recover(); e != nil {
+				println "[bull] 请求 panic（已拦截）:", path, e // 出错也不能让整个游戏崩掉
+			}
+			ch <- r // 缓冲为 1，不会阻塞
+		}()
+		println "[bull] 请求开始:", path
+		r = apiSync(path, b)
+	}()
+	var out map[string]any
+	waiting := true
+	for waiting {
+		select {
+		case out = <-ch:
+			waiting = false
+		default:
+			waitNextFrame
+		}
+	}
+	if out == nil {
+		println "[bull] 请求结束（失败）:", path
+	} else {
+		println "[bull] 请求结束，结果已交给游戏:", path
+	}
+	netBusy = false
+	if out != nil {
+		netFails = 0
+	}
+	return out
+}
+
+// 一次网络失败：第 1 次只提示“网络不稳，请再试一次”，连续第 2 次就转为离线。返回 true 表示已经离线
+func netFail() bool {
+	netFails++
+	if netFails >= 2 {
+		goOffline("网络出错")
+		return true
+	}
+	Toast.pop 10
+	return false
+}
+
+func ok(r map[string]any) bool {
+	return r != nil && r["ok"] == true
+}
+
+func num(r map[string]any, k string) int {
+	if v, isNum := r[k].(float64); isNum {
+		return int(v)
+	}
+	return 0
+}
+
+func str(r map[string]any, k string) string {
+	if v, isStr := r[k].(string); isStr {
+		return v
+	}
+	return ""
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	s := ""
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	for n > 0 {
+		s = string(rune('0'+n%10)) + s
+		n /= 10
+	}
+	if neg {
+		s = "-" + s
+	}
+	return s
+}
+
+// 用服务器返回的数据刷新本地状态
+func applyProfile(r map[string]any) {
+	wallet = num(r, "wallet")
+	best = num(r, "best")
+	charOwned = num(r, "chars") | 1
+	mapOwned = num(r, "maps") | 1
+	curChar = num(r, "char")
+	curMap = num(r, "map")
+	shieldCnt = num(r, "shield")
+	doubleCnt = num(r, "double")
+	if shieldCnt > 3 {
+		shieldCnt = 3
+	}
+	if doubleCnt > 3 {
+		doubleCnt = 3
+	}
+	if p, isList := r["prices"].([]any); isList && len(p) == 8 {
+		srvPrice = p
+	}
+	bdIdx = -1
+	updateRoad()
+}
+
+// 网络出问题：切到离线（游客）模式，当前钱包等数据保留在本次会话里
+func goOffline(why string) {
+	if online {
+		Toast.pop 7
+	}
+	online = false
+	token = ""
+	runId = ""
+	netFails = 0
+	netState = "离线（" + why + "）"
+	netKind = 3
+}
+
+// 示意广告倒计时结束
+func adDone() {
+	if online && adId != "" {
+		r := api("/xb/revive", {"run": runId, "method": "ad", "ad": adId})
+		adId = ""
+		if r == nil {
+			netFail()
+		} else if ok(r) {
+			applyProfile(r)
+		} else {
+			goOffline(str(r, "err"))
+		}
+	}
+	doRevive()
+}
+
+// ---------------- 登录面板（state 5） ----------------
+func presetNick(i int) string {
+	switch i % 8 {
+	case 1:
+		return "草原小飞牛"
+	case 2:
+		return "沙漠骆驼迷"
+	case 3:
+		return "星空夜跑者"
+	case 4:
+		return "金币收割机"
+	case 5:
+		return "跑酷小王子"
+	case 6:
+		return "牛气冲天"
+	case 7:
+		return "一路狂奔"
+	}
+	return "快跑大角牛"
+}
+
+func updatePin() {
+	pinShow = ""
+	for i := 0; i < 4; i++ {
+		if i < len(loginPin) {
+			pinShow += "* "
+		} else {
+			pinShow += "_ "
+		}
+	}
+}
+
+func openLogin() {
+	if state != 0 && state != 2 && state != 5 {
+		return
+	}
+	state = 5
+	Panel.hide
+	NewRecord.hide
+	Bull.say ""
+	if loginNick == "" {
+		loginNick = presetNick(0)
+	}
+	loginPin = ""
+	updatePin()
+	setMsg(0)
+	Login.open
+}
+
+func closeLogin() {
+	Login.hide
+	state = 0
+	Panel.showTitle
+}
+
+func pinKey(d int) {
+	if state != 5 || asking {
+		return
+	}
+	if d == -1 {
+		if len(loginPin) > 0 {
+			loginPin = loginPin[:len(loginPin)-1]
+		}
+	} else if d == -2 {
+		loginPin = ""
+	} else if len(loginPin) < 4 {
+		loginPin += string(rune('0' + d))
+	}
+	updatePin()
+}
+
+func nextNick(d int) {
+	if state != 5 || asking {
+		return
+	}
+	nickIdx = (nickIdx + d + 8) % 8
+	loginNick = presetNick(nickIdx)
+}
+
+// 用 spx 的 ask 弹出输入框自己输入昵称
+func typeNick() {
+	if state != 5 || asking {
+		return
+	}
+	asking = true
+	ask "请输入昵称（1-16 个字，换设备时用它登录）"
+	a := answer
+	wait 0.4 // 等输入框的回车键过去，免得被当成“登录”
+	asking = false
+	if len(a) > 0 {
+		r := []rune(a)
+		if len(r) > 16 {
+			r = r[:16]
+		}
+		loginNick = string(r)
+	}
+}
+
+// 登录（reg = false）或注册（reg = true）
+func doLogin(reg bool) {
+	if state != 5 || asking || netBusy {
+		return
+	}
+	if len(loginPin) != 4 {
+		setMsg(1)
+		return
+	}
+	setMsg(2)
+	path := "/xb/login"
+	if reg {
+		path = "/xb/register"
+	}
+	token = ""
+	r := api(path, {"nick": loginNick, "pin": loginPin})
+	if r == nil {
+		setMsg(3)
+		return
+	}
+	if !ok(r) {
+		setMsg(errMsgId(str(r, "err")))
+		return
+	}
+	token = str(r, "token")
+	online = true
+	applyProfile(r)
+	netState = "在线 · " + str(r, "nick")
+	acctNick = str(r, "nick")
+	rank = 0
+	netKind = 1
+	loginPin = ""
+	closeLogin()
+	if reg {
+		Toast.pop 8
+	} else {
+		Toast.pop 9
+	}
+}
+
+// 游客试玩：不联网，数据只在本次打开期间有效
+func guestMode() {
+	if state != 5 || asking || netBusy {
+		return
+	}
+	online = false
+	token = ""
+	netState = "游客（不存档）"
+	netKind = 2
+	rank = 0
+	wallet = 0
+	charOwned = 1
+	mapOwned = 1
+	curChar = 0
+	curMap = 0
+	shieldCnt = 0
+	doubleCnt = 0
+	best = 0
+	srvPrice = nil
+	bdIdx = -1
+	updateRoad()
+	closeLogin()
+}
+
+// 登录面板上的点击（面板中心在舞台 (0, -5)，左上角在 (-220, 154)）
+func loginClick(x, y float64) {
+	if asking {
+		return
+	}
+	px := x + 230 // 换算成面板坐标（面板左上角在舞台 (-230, 165)）
+	py := 165 - y
+	if absf(py-120) < 19 {
+		if absf(px-44) < 26 {
+			nextNick(-1)
+			return
+		} else if absf(px-100) < 26 {
+			nextNick(1)
+			return
+		} else if absf(px-176) < 50 {
+			typeNick()
+			return
+		}
+	}
+	if absf(px-66) < 70 && absf(py-81) < 17 {
+		typeNick() // 点昵称框也可以自己输入
+		return
+	}
+	if absf(px-122) < 104 {
+		if absf(py-256) < 21 {
+			doLogin(false)
+			return
+		} else if absf(py-300) < 20 {
+			doLogin(true)
+			return
+		}
+	}
+	if absf(px-342) < 104 && absf(py-268) < 20 {
+		guestMode()
+		return
+	}
+	for k := 0; k < 12; k++ {
+		cx := 274 + 68*float64(k%3)
+		cy := 70 + 48*float64(k/3)
+		if absf(px-cx) < 33 && absf(py-cy) < 23 {
+			if k < 9 {
+				pinKey(k + 1)
+			} else if k == 9 {
+				pinKey(-2)
+			} else if k == 10 {
+				pinKey(0)
+			} else {
+				pinKey(-1)
+			}
+			return
+		}
+	}
+}
+
+// ---------------- 商店 ----------------
+func price(i int) int {
+	if len(srvPrice) == 8 {
+		if v, isNum := srvPrice[i].(float64); isNum {
+			return int(v)
+		}
+	}
+	switch i {
+	case 1:
+		return 300
+	case 2:
+		return 600
+	case 4:
+		return 200
+	case 5:
+		return 500
+	case 6:
+		return 60
+	case 7:
+		return 80
+	}
+	return 0
+}
+
+// 商店：两行各 4 张卡片（角色 3 + 护盾，地图 3 + 双倍金币 的顺序见 ShopCard）
+func cardX(i int) float64 {
+	return -165 + 110*float64(i%4)
+}
+
+func cardY(i int) float64 {
+	if i < 4 {
+		return 40
+	}
+	return -80
+}
+
+func openShop() {
+	if state != 0 && state != 2 {
+		return
+	}
+	state = 3
+	Panel.hide
+	NewRecord.hide
+	Bull.say "" // 收起撞车时的“哎呀！”气泡
+	Shop.open
+	for i := 0; i < 8; i++ {
+		ShopCard.clone i
+	}
+}
+
+func closeShop() {
+	if state != 3 {
+		return
+	}
+	state = 0
+	Shop.hide
+	Panel.showTitle
+}
+
+func shopMove(d int) {
+	n := shopSel + d
+
+	if n >= 0 && n <= 7 {
+		shopSel = n
+	}
+}
+
+// 买下或使用第 i 个商品：0-2 角色，3-5 地图，6 无敌护盾，7 双倍金币
+func buyOrUse(i int) {
+	if netBusy {
+		return
+	}
+	if online {
+		r := api("/xb/buy", {"item": i})
+		if r == nil {
+			if !netFail() {
+				return // 网络抖了一下：这次没买，提示再点一次
+			}
+			// 连续失败已转为离线：下面按离线规则处理
+		} else if ok(r) {
+			applyProfile(r)
+			if r["bought"] == true {
+				play "coin"
+				Toast.pop 1
+			} else {
+				Toast.pop 2
+			}
+			return
+		} else {
+			if num(r, "code") == 409 {
+				Toast.pop 3
+			} else if num(r, "code") == 402 {
+				Toast.pop 0
+			} else {
+				goOffline(str(r, "err"))
+			}
+			return
+		}
+	}
+	p := price(i)
+	if i < 6 {
+		bit := 1 << uint(i%3)
+		owned := charOwned
+		if i >= 3 {
+			owned = mapOwned
+		}
+		if owned&bit == 0 {
+			if wallet < p {
+				Toast.pop 0
+				return
+			}
+			wallet -= p
+			if i < 3 {
+				charOwned |= bit
+			} else {
+				mapOwned |= bit
+			}
+			play "coin"
+			Toast.pop 1
+		} else {
+			Toast.pop 2
+		}
+		if i < 3 {
+			curChar = i
+		} else {
+			curMap = i - 3
+			bdIdx = -1
+	updateRoad()
+		}
+		return
+	}
+	cnt := shieldCnt
+	if i == 7 {
+		cnt = doubleCnt
+	}
+	if cnt >= 3 {
+		Toast.pop 3
+		return
+	}
+	if wallet < p {
+		Toast.pop 0
+		return
+	}
+	wallet -= p
+	if i == 6 {
+		shieldCnt++
+	} else {
+		doubleCnt++
+	}
+	play "coin"
+	Toast.pop 1
+}
+
+func startBoost() {
+	boostTime = 300 // 约 5 秒（60 帧/秒）
+	boostLeft = 5
+	play "boost"
+}
+
+func addCoin() {
+	coins++
+}
+
+// 在 (x, y) 收集到一枚金币：加分 + 叮的一声 + “+10”飘字
+func addCoinAt(x, y float64) {
+	coins += coinMul
+	play "coin"
+	if coinMul == 2 {
+		spawnFx(3, x, y+30, 0, 2.2) // 双倍金币：飘“+20”
+	} else {
+		spawnFx(0, x, y+30, 0, 2.2)
+	}
+}
+
+// 生成一个特效克隆，k：0 = +10，1 = 火花，2 = 扬尘
+func spawnFx(k int, x, y, vx, vy float64) {
+	Fx.clone([]float64{float64(k), x, y, vx, vy})
+}
+
+// 点击 / 空格：开始或重新开始
+func tap() {
+	if state == 0 {
+		startGame()
+	} else if state == 2 && overFrames > 40 {
+		startGame()
+	}
+}
+
+func doJump() {
+	if state == 1 {
+		if frozen {
+			return
+		}
+		Bull.doJump
+	} else {
+		tap()
+	}
+}
+
+func doSlide() {
+	if state == 1 && !frozen {
+		Bull.doSlide
+	}
+}
+
+func changeLane(d int) {
+	if state != 1 || frozen {
+		return
+	}
+	l := bullLane + d
+	if l >= 0 && l <= 2 {
+		bullLane = l
+	}
+}
+
+// 触屏 / 鼠标：自己检测“点一下”和“滑动”（没有用 onSwipe：本地实测 spx v3.3.0 的滑动方向是反的，所以直接读 mouseX / mouseY 判断）
+//   游戏中：左右滑 = 换道，上滑 = 跳，下滑 = 滑铲（手指一滑过 25 像素就立刻生效，不用等松手）
+//   不在游戏中：点按钮 / 卡片 / 键盘，或者点屏幕开始 / 重新开始
+func pollPointer() {
+	if mousePressed {
+		if !ptrDown {
+			ptrDown = true
+			ptrSwiped = false
+			ptrX = mouseX
+			ptrY = mouseY
+		} else if !ptrSwiped && state == 1 && !frozen {
+			dx := mouseX - ptrX
+			dy := mouseY - ptrY
+			if absf(dx) > 25 && absf(dx) > absf(dy) {
+				ptrSwiped = true
+				if dx > 0 {
+					changeLane(1) // 向右滑
+				} else {
+					changeLane(-1) // 向左滑
+				}
+			} else if absf(dy) > 25 {
+				ptrSwiped = true
+				if dy > 0 {
+					doJump() // 向上滑：跳
+				} else {
+					doSlide() // 向下滑：滑铲
+				}
+			}
+		}
+	} else {
+		if ptrDown && !ptrSwiped {
+			if state == 5 {
+				loginClick(ptrX, ptrY)
+			} else if state == 3 {
+				shopClick(ptrX, ptrY)
+			} else if state == 1 && frozen {
+				reviveClick(ptrX, ptrY)
+			} else if state != 1 {
+				if absf(ptrX-92) < 44 && absf(ptrY+152) < 17 {
+					openLogin() // 点「账号」按钮
+				} else if absf(ptrX-190) < 44 && absf(ptrY+152) < 17 {
+					openShop() // 点「商店」按钮
+				} else {
+					tap() // 开始 / 重新开始
+				}
+			}
+		}
+		ptrDown = false
+	}
+}
+
+// 商店里点击：点卡片 = 购买 / 使用，点「返回」= 回到标题
+func shopClick(x, y float64) {
+	if absf(x-185) < 31 && absf(y-124) < 15 {
+		closeShop()
+		return
+	}
+	for i := 0; i < 8; i++ {
+		if absf(x-cardX(i)) < 51 && absf(y-cardY(i)) < 57 {
+			shopSel = i
+			buyOrUse(i)
+			return
+		}
+	}
+}
+
+// 复活面板里点击（面板在舞台中央）
+func reviveClick(x, y float64) {
+	if reviveMode != 1 {
+		return
+	}
+	if absf(x) < 119 && absf(y-25) < 18 {
+		reviveChoose(1)
+	} else if absf(x) < 119 && absf(y+23) < 18 {
+		reviveChoose(2)
+	} else if absf(x) < 59 && absf(y+70) < 15 {
+		reviveChoose(3)
+	}
+}
+
+// 生成一个障碍物（在最远处出现）
+func spawnObstacle(l int, k int) {
+	Obstacle.clone l + 10*k
+}
+
+// 两边各生成一个路边装饰（树 / 仙人掌 / 路灯，跟着地图换）
+func spawnDeco() {
+	Deco.clone 0
+	Deco.clone 1
+}
+
+// 按躲法随机挑一种障碍：0 = 跳（低栏 / 石堆），1 = 滑铲（高栏），2 = 换道（草垛 / 木箱）
+func pickKind(cat int) int {
+	if cat == 0 {
+		return int(rand(0, 1))
+	} else if cat == 1 {
+		return 2
+	}
+	return 3 + int(rand(0, 1))
+}
+
+// 生成一排障碍物（以及金币 / 冲刺道具）
+func spawnRow() {
+	n := 1
+	if frames > 900 && rand(1, 100) <= 45 {
+		n = 2
+	}
+	l1 := int(rand(0, 2))
+	c1 := int(rand(0, 2))
+	spawnObstacle(l1, pickKind(c1))
+	used2 := -1
+	if n == 2 {
+		l2 := (l1 + 1 + int(rand(0, 1))) % 3
+		c2 := int(rand(0, 2))
+		if c1 == 2 && c2 == 2 {
+			c2 = int(rand(0, 1)) // 至少留一条能跳 / 滑过去的路
+		}
+		spawnObstacle(l2, pickKind(c2))
+		used2 = l2
+	}
+	free := 0
+	for free == l1 || free == used2 {
+		free++
+	}
+	r := rand(1, 100)
+	if r <= 8 && boostTime == 0 {
+		Boost.clone free
+	} else if r <= 70 {
+		for i := 0; i < 5; i++ {
+			Coin.clone i*10 + free
+		}
+	}
+}
+
+onStart => {
+	state = 0
+	best = 0
+	bullX = 0
+	bullLane = 1
+	curSpeed = 6
+	bdIdx = -1
+	updateRoad()
+	wallet = 0
+	charOwned = 1
+	mapOwned = 1
+	curChar = 0
+	curMap = 0
+	http.DefaultClient.Timeout = 4000000000 // 每次网络请求最多等 4 秒（单位纳秒）
+	// 画面里的文字和标签（代替变量监视器）
+	txtCache = make([]string, TXTN)
+	for s := 0; s < TXTN; s++ {
+		for i := 0; i < txtMax(s); i++ {
+			Txt.clone s*100 + i
+		}
+	}
+	for k := 0; k < 7; k++ {
+		Pill.clone k
+	}
+	NickImg.clone 0
+	NickImg.clone 1
+	for i := 0; i < 4; i++ {
+		PinDot.clone i
+	}
+	netState = "游客（不存档）"
+	netKind = 2
+	rank = 0
+	state = 0
+	openLogin() // 一打开先显示登录面板（可以选游客试玩）
+	for {
+		if state == 1 && frozen {
+			curSpeed = 0
+			if reviveMode == 2 {
+				adT--
+				if adT <= 0 {
+					adDone() // 示意广告看完：复活
+				}
+			}
+		} else if state == 1 {
+			if invT > 0 {
+				invT--
+			}
+			if reviveClear > 0 {
+				reviveClear--
+			}
+			frames++
+			speed = 18 + frames*0.006
+			if speed > 36 {
+				speed = 36
+			}
+			if boostTime > 0 {
+				boostTime--
+				curSpeed = speed * 1.5
+				boostLeft = int(boostTime/60) + 1
+				if boostTime <= 0 {
+					boostLeft = 0
+				}
+			} else {
+				curSpeed = speed
+			}
+			if boostTime > 0 {
+				shakeX = rand(-1.6, 1.6)
+				shakeY = rand(-1.6, 1.6)
+			} else {
+				shakeX = 0
+				shakeY = 0
+			}
+			dist += curSpeed / 60
+			score = int(dist) + coins*10
+			spawnGap -= curSpeed
+			if spawnGap <= 0 {
+				spawnRow()
+				gap := rand(760.0, 1000.0) - frames*0.08
+				if gap < 560 {
+					gap = 560
+				}
+				spawnGap = gap
+			}
+		} else if state == 0 || state == 5 || state == 3 {
+			curSpeed = 6
+		} else {
+			curSpeed = 0
+			shakeX = 0
+			shakeY = 0
+			overFrames++
+		}
+		if !frozen {
+			roadZ += curSpeed
+			updateRoad()
+			decoGap -= curSpeed
+			if decoGap <= 0 && state != 2 {
+				spawnDeco()
+				decoGap = 300
+			}
+		}
+		pollPointer()
+		updateTexts()
+		waitNextFrame
+	}
+}
+
+// 键盘：←/→、A/D 换道；↑/W/空格 跳；↓/S 滑铲；空格 / 回车：开始 / 重新开始
+// 商店：方向键选卡片，空格 / 回车 / J 购买或使用
+// 登录面板：数字键输 PIN，Backspace 删除，←→ 换昵称，T 输入昵称，回车 登录，R 注册，G 游客
+onKey [KeyUp, KeyW, KeySpace], key => {
+	if state == 3 {
+		if key == KeySpace {
+			buyOrUse(shopSel)
+		} else {
+			shopMove(-4)
+		}
+	} else if state != 5 {
+		doJump()
+	}
+}
+
+onKey KeyJ, => {
+	if state == 3 {
+		buyOrUse(shopSel)
+	}
+}
+
+onKey [KeyDown, KeyS], => {
+	if state == 3 {
+		shopMove(4)
+	} else {
+		doSlide()
+	}
+}
+
+onKey [KeyLeft, KeyA], => {
+	if state == 5 {
+		nextNick(-1)
+	} else if state == 3 {
+		shopMove(-1)
+	} else {
+		changeLane(-1)
+	}
+}
+
+onKey [KeyRight, KeyD], => {
+	if state == 5 {
+		nextNick(1)
+	} else if state == 3 {
+		shopMove(1)
+	} else {
+		changeLane(1)
+	}
+}
+
+onKey KeyEnter, => {
+	if state == 5 {
+		doLogin(false)
+	} else if state == 3 {
+		buyOrUse(shopSel)
+	} else {
+		tap()
+	}
+}
+
+// B：打开 / 关闭商店（标题页和结算页都能开）；Esc：关闭商店，或在复活选择时放弃
+onKey KeyB, => {
+	if state == 3 {
+		closeShop()
+	} else {
+		openShop()
+	}
+}
+
+onKey KeyEscape, => {
+	if state == 5 {
+		guestMode()
+	} else if state == 3 {
+		closeShop()
+	} else {
+		reviveChoose(3)
+	}
+}
+
+// 复活选择：1 花金币，2 看示意广告，3 放弃
+onKey Key1, => {
+	reviveChoose(1)
+}
+
+onKey Key2, => {
+	reviveChoose(2)
+}
+
+onKey Key3, => {
+	reviveChoose(3)
+}

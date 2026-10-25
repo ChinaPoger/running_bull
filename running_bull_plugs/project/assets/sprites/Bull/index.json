@@ -1,0 +1,218 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": -150,
+  "size": 0.9,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": true,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "bull_run1",
+      "path": "bull_run1.png",
+      "builder_id": "RM5wogBw1ajbs2Wi8EV2E",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "bull_run2",
+      "path": "bull_run2.png",
+      "builder_id": "hSmsGc4SXibj8yf4r1RIW",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "bull_run3",
+      "path": "bull_run3.png",
+      "builder_id": "mJb8DUyNQXSGGdc33o7cc",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "bull_run4",
+      "path": "bull_run4.png",
+      "builder_id": "2CLHKXRs7K1VedYN42U0o",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "bull_jump",
+      "path": "bull_jump.png",
+      "builder_id": "LN9Gv00XSaJmsoZwLz57n",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "bull_slide",
+      "path": "bull_slide.png",
+      "builder_id": "JnVwcQsbTJ7vn3hoyPxR6",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "pig_run1",
+      "path": "pig_run1.png",
+      "builder_id": "TWFx1G4ATO7ru85RDHRsz",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "pig_run2",
+      "path": "pig_run2.png",
+      "builder_id": "EyBedtIlFpt9FxfytM8nk",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "pig_run3",
+      "path": "pig_run3.png",
+      "builder_id": "wfDpdxwKKZae0q5ZrNrw8",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "pig_run4",
+      "path": "pig_run4.png",
+      "builder_id": "UMlXGG3vZ6BvGThBx0hUU",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "pig_jump",
+      "path": "pig_jump.png",
+      "builder_id": "iusdHjzXUT6XF9dmdxX9a",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "pig_slide",
+      "path": "pig_slide.png",
+      "builder_id": "6exne5klJYGWV3zyM34dA",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "sheep_run1",
+      "path": "sheep_run1.png",
+      "builder_id": "lEEsCOo641l3L5s4HYDFd",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "sheep_run2",
+      "path": "sheep_run2.png",
+      "builder_id": "rL44Go17zhzQe8rbNjHRv",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "sheep_run3",
+      "path": "sheep_run3.png",
+      "builder_id": "TydwCwp192RZeLNUwgiB0",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "sheep_run4",
+      "path": "sheep_run4.png",
+      "builder_id": "oWzSGXuNZLgd9KHgVi3Jf",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "sheep_jump",
+      "path": "sheep_jump.png",
+      "builder_id": "JvTt8NLZIjsIWQJal3Om2",
+      "imageWidth": 200,
+      "imageHeight": 224
+    },
+    {
+      "x": 100.0,
+      "y": 218,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "sheep_slide",
+      "path": "sheep_slide.png",
+      "builder_id": "1DWZb1Drs1hJ12k7doHU6",
+      "imageWidth": 200,
+      "imageHeight": 224
+    }
+  ],
+  "builder_id": "gtaAW6ZZpwUCVOyHqqJ2B"
+}

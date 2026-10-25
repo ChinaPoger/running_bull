@@ -1,0 +1,26 @@
+// 账号徽章（左下角）：在线 / 游客 · 不存档 / 离线
+
+var (
+	tick int
+)
+
+onStart => {
+	hide
+	for {
+		if acctOn() {
+			setCostume netKind - 1
+			if netKind == 2 {
+				setXYpos -180, -158
+			} else {
+				setXYpos -205, -158
+			}
+			if !visible {
+				show
+				setLayer Front
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

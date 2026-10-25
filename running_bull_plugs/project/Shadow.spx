@@ -1,0 +1,13 @@
+// 大角牛脚下的影子：始终贴在所在车道的地面上，跳得越高影子越小——让人一眼看出牛在哪条跑道、离地多高
+
+onStart => {
+	for {
+		h := jumpH
+		if h > 100 {
+			h = 100
+		}
+		setXYpos bullX+shakeX, Bull.groundY+shakeY
+		setSize Bull.curScale * (1 - h/250)
+		waitNextFrame
+	}
+}

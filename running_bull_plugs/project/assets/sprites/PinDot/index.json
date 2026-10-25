@@ -1,0 +1,42 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 24.0,
+      "y": 24.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "on",
+      "path": "on.png",
+      "builder_id": "0kcA6Y5W2dXvpiUrwNo0u",
+      "imageWidth": 48,
+      "imageHeight": 48
+    },
+    {
+      "x": 24.0,
+      "y": 24.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "off",
+      "path": "off.png",
+      "builder_id": "BJ72EpKPxge6KT8DSCSL8",
+      "imageWidth": 48,
+      "imageHeight": 48
+    }
+  ],
+  "builder_id": "nHDoLMTObs7iINoszad37"
+}

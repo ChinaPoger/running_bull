@@ -1,0 +1,31 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 25.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "coin",
+      "path": "coin.png",
+      "builder_id": "RmQIkJegFZmcxweeOF5hM",
+      "imageWidth": 50,
+      "imageHeight": 52
+    }
+  ],
+  "builder_id": "eP0fwJMYQKMahI69pJllZ"
+}

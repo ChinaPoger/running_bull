@@ -1,0 +1,27 @@
+// 撞车时全屏白闪（v3 打击感）：一下变白，再在约 1/3 秒内淡出
+
+var (
+	ft int
+)
+
+func flash() {
+	ft = 0
+	setXYpos 0, 0
+	setGraphicEffect GhostEffect, 15
+	show
+	setLayer Front
+}
+
+onStart => {
+	hide
+	for {
+		if visible {
+			ft++
+			setGraphicEffect GhostEffect, 15+float64(ft)*4.5
+			if ft >= 19 {
+				hide
+			}
+		}
+		waitNextFrame
+	}
+}

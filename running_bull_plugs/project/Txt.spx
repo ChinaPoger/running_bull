@@ -1,0 +1,40 @@
+// 画面里的文字（代替变量监视器）：每个克隆显示一个字符（ASCII 字形图），按槽位排成一行。
+// 槽位和位置见 main.spx 的 txtX / txtY / txtAlign，要显示的内容每帧算好放在 txtCache 里。
+
+var (
+	slot int
+	idx  int
+	last int
+	tick int
+)
+
+onCloned data => {
+	code := data.(int)
+	slot = code / 100
+	idx = code % 100
+	last = -1
+	hide
+	for {
+		s := txtCache[slot]
+		if idx < len(s) && s[idx] > 32 && s[idx] < 127 {
+			c := int(s[idx])
+			if c != last {
+				setCostume c - 33 // 造型 0 = “!”（ASCII 33）
+				last = c
+			}
+			setXYpos txtX(slot)+(float64(idx)+0.5-txtAlign(slot)*float64(len(s)))*10, txtY(slot)
+			if !visible {
+				show
+				setLayer Front
+				tick = 0
+			}
+			tick++
+			if tick%8 == 0 {
+				setLayer Front // 面板打开时会盖住文字，所以隔几帧再提到最前
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

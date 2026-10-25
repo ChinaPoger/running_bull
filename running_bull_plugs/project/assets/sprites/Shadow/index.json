@@ -1,0 +1,31 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": -150,
+  "size": 0.9,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": true,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 70.0,
+      "y": 18.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "shadow",
+      "path": "shadow.png",
+      "builder_id": "xE1aB9faQUhF1vJcN6dZ8",
+      "imageWidth": 140,
+      "imageHeight": 36
+    }
+  ],
+  "builder_id": "0LOPjHqv98Sy7ceWI9wJe"
+}

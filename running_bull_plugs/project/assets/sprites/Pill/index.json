@@ -1,0 +1,97 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 100.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "score",
+      "path": "score.png",
+      "builder_id": "ssNxeIV780KHyY4DGPen5",
+      "imageWidth": 200,
+      "imageHeight": 52
+    },
+    {
+      "x": 100.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "coins",
+      "path": "coins.png",
+      "builder_id": "Y0nPLQolPWgqtCl9bUwfk",
+      "imageWidth": 200,
+      "imageHeight": 52
+    },
+    {
+      "x": 100.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "best",
+      "path": "best.png",
+      "builder_id": "ZGx9cE4rlaYhWZeJvNLWL",
+      "imageWidth": 200,
+      "imageHeight": 52
+    },
+    {
+      "x": 100.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "wallet",
+      "path": "wallet.png",
+      "builder_id": "XcXkSDBnNYxRf05UWgQif",
+      "imageWidth": 200,
+      "imageHeight": 52
+    },
+    {
+      "x": 100.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "shield",
+      "path": "shield.png",
+      "builder_id": "wsakWIaxEusbNQGI0196w",
+      "imageWidth": 200,
+      "imageHeight": 52
+    },
+    {
+      "x": 100.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "mul",
+      "path": "mul.png",
+      "builder_id": "AOX3TLpBSwbVko1yh6Trx",
+      "imageWidth": 200,
+      "imageHeight": 52
+    },
+    {
+      "x": 100.0,
+      "y": 26.0,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "rank",
+      "path": "rank.png",
+      "builder_id": "zuEm1f4YxvqrqLzaxvQkh",
+      "imageWidth": 200,
+      "imageHeight": 52
+    }
+  ],
+  "builder_id": "jWqYktQ3vj0Oqi0TnLnT0"
+}

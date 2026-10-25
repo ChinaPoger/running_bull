@@ -1,0 +1,53 @@
+{
+  "heading": 90,
+  "x": 0,
+  "y": 0,
+  "size": 1,
+  "rotationStyle": "normal",
+  "physicsMode": "no",
+  "costumeIndex": 0,
+  "visible": false,
+  "isDraggable": false,
+  "collisionPivot": {
+    "x": 0,
+    "y": 0
+  },
+  "collisionShapeType": "none",
+  "collisionShapeParams": [],
+  "costumes": [
+    {
+      "x": 80.0,
+      "y": 252,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "tree",
+      "path": "tree.png",
+      "builder_id": "iwLX5OGxyhG40m7vsUXpx",
+      "imageWidth": 160,
+      "imageHeight": 260
+    },
+    {
+      "x": 60.0,
+      "y": 200,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "cactus",
+      "path": "cactus.png",
+      "builder_id": "aLkUspW4uaMzOlJVWHvIJ",
+      "imageWidth": 120,
+      "imageHeight": 208
+    },
+    {
+      "x": 70.0,
+      "y": 292,
+      "faceRight": 0,
+      "bitmapResolution": 2,
+      "name": "lamp",
+      "path": "lamp.png",
+      "builder_id": "IuTpVHIwmVqwUggurj2t8",
+      "imageWidth": 140,
+      "imageHeight": 300
+    }
+  ],
+  "builder_id": "9taCnP73SK0YoPvC3eXIZ"
+}

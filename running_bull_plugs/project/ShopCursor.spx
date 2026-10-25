@@ -1,0 +1,22 @@
+// 商店的键盘选择框（v4）：跟着 shopSel 移动
+
+func toFront() {
+	setLayer Front
+	ShopClose.open
+}
+
+onStart => {
+	hide
+	for {
+		if state == 3 {
+			setXYpos cardX(shopSel), cardY(shopSel)
+			if !visible {
+				show
+				setLayer Front
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}

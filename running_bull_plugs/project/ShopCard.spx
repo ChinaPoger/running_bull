@@ -1,0 +1,44 @@
+// 商店卡片（v4）：每个商品一个克隆，按“未拥有 / 已拥有 / 使用中 / 持有数量”自动切换造型
+// 造型顺序：商品 0-5（角色、地图）每个 3 个造型，商品 6-7（护盾、双倍金币）每个 4 个造型（持有 0-3）
+
+var (
+	item int
+)
+
+func look() int {
+	if item < 6 {
+		bit := 1 << uint(item%3)
+		owned := charOwned
+		cur := curChar
+		if item >= 3 {
+			owned = mapOwned
+			cur = curMap + 3
+		}
+		st := 0
+		if cur == item {
+			st = 2
+		} else if owned&bit != 0 {
+			st = 1
+		}
+		return item*3 + st
+	}
+	cnt := shieldCnt
+	if item == 7 {
+		cnt = doubleCnt
+	}
+	return 18 + (item-6)*4 + cnt
+}
+
+onCloned data => {
+	item = data.(int)
+	setXYpos cardX(item), cardY(item)
+	setCostume look()
+	show
+	setLayer Front
+	ShopCursor.toFront
+	for state == 3 {
+		setCostume look()
+		waitNextFrame
+	}
+	deleteThisClone
+}

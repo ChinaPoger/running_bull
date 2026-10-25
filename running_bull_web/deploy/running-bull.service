@@ -1,0 +1,15 @@
+# /etc/systemd/system/running-bull.service
+[Unit]
+Description=大角牛快跑 API
+After=network.target mysql.service
+
+[Service]
+WorkingDirectory=/opt/running_bull_web
+EnvironmentFile=/opt/running_bull_web/deploy/env
+ExecStart=/usr/bin/python3 server.py
+Restart=always
+RestartSec=3
+User=www-data
+
+[Install]
+WantedBy=multi-user.target

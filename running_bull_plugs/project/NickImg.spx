@@ -1,0 +1,51 @@
+// 昵称图片：克隆 0 = 登录面板昵称框里，克隆 1 = 左下角账号行（徽章右边）。
+// 8 个预设昵称直接显示图片；自己输入的英文 / 数字昵称由 Txt 一个字一个字画；自己输入的中文昵称显示“已输入自定义昵称”。
+
+var (
+	which int
+	tick  int
+)
+
+onCloned data => {
+	which = data.(int)
+	hide
+	for {
+		on := false
+		if which == 0 && state == 5 {
+			on = true
+			i := presetIdx(loginNick)
+			if i >= 0 {
+				setCostume i
+			} else if isAscii(loginNick) {
+				on = false
+			} else {
+				setCostume 8
+			}
+			setXYpos -108, 81
+		} else if which == 1 && acctOn() && netKind == 1 {
+			on = true
+			i := presetIdx(acctNick)
+			if i >= 0 {
+				setCostume 9 + i
+			} else if isAscii(acctNick) {
+				on = false
+			} else {
+				setCostume 17
+			}
+			setXYpos -76, -158
+		}
+		if on {
+			if !visible {
+				show
+				setLayer Front
+			}
+			tick++
+			if which == 0 && tick%8 == 6 { // 登录面板上的要盖过面板底图
+				setLayer Front
+			}
+		} else if visible {
+			hide
+		}
+		waitNextFrame
+	}
+}
