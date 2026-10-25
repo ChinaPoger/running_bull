@@ -85,6 +85,13 @@ r2 = call('POST', '/runs', {}, B)['run_id']
 before = call('GET', '/me', dev=B)['user']['coins']
 after = call('POST', f'/runs/{r2}/revive', {'method': 'coins'}, B)['user']['coins']; assert after == before - 100
 f2 = call('POST', f'/runs/{r2}/finish', {'score': 50, 'coins': 3}, B); assert not f2['capped'] and f2['earned'] == 3
+# 竖屏结算：金币入账，但不改全服 best（和横版计分不是同一套）
+P = dev()
+pu = call('POST', '/guest', {'device_id': P, 'nickname': '竖屏牛'})['user']
+assert pu['best'] == 0 and pu['coins'] == 100
+pr = call('POST', '/runs', {}, P)['run_id']
+pf = call('POST', f'/runs/{pr}/finish', {'score': 999999, 'coins': 5, 'board': 'portrait'}, P)
+assert pf['earned'] == 5 and pf['new_record'] is False and pf['user']['best'] == 0 and pf['user']['coins'] == 105, pf
 # 排行榜
 top = call('GET', '/leaderboard')['top']; assert top[0]['best'] >= top[-1]['best'] and len(top) <= 20
 assert any(t['nickname'] == '阿牛' for t in top)

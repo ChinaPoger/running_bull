@@ -2,6 +2,8 @@
 
 一个基于 [XBuilder](https://github.com/goplus/builder)（spx 游戏引擎 + XGo 语言）的「天天酷跑 / 地铁跑酷」风格无尽跑酷小游戏。主角是可爱的**大角牛**，在三条跑道上自动向前奔跑：跳过低栏、滑铲钻过高栏、换道躲开草垛和木箱，一路收集金币，吃到闪电还能冲刺！
 
+竖屏手机网页在 `running_bull_web/public/mobile-web/`。本地先 `cd running_bull_web && python3 server.py`，再打开 <http://127.0.0.1:3000/mobile-web/> ；线上是 <https://bull.lingecho.com/mobile-web/> （nginx 直接提供 `public/` 里的静态文件，横版仍在网站根路径）。口号「勇敢牛牛，不怕困难」。说明见 `running_bull_web/README.md` 的「四.1」。
+
 ![素材预览](preview.png)
 
 ## v5.1 修复：XBuilder 网页里登录 / 注册后画面变白
