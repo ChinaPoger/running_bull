@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1a8cff" />
+  <meta name="description" content="大角牛快跑 · 勇敢牛牛，不怕困难 —— 竖屏三道跑酷" />
+  <title>大角牛快跑 · 竖屏跑酷</title>
+  <link rel="icon" href="../assets/coin.png" />
+  <link rel="stylesheet" href="style.css?v=duckbar1" />
+</head>
+<body>
+  <div id="app" data-theme="earth">
+    <header id="hud" aria-live="polite">
+      <div class="hud-pill">
+        <span class="hud-ico" id="hud-ico-dist" aria-hidden="true">🏁</span>
+        <div class="hud-block">
+          <span class="hud-label" id="hud-label-dist">距离</span>
+          <span id="hud-dist">0</span>
+        </div>
+      </div>
+      <div class="hud-pill coin-pill">
+        <span class="hud-ico" aria-hidden="true">🪙</span>
+        <div class="hud-block">
+          <span class="hud-label">金币</span>
+          <span id="hud-coins">0</span>
+        </div>
+      </div>
+      <div class="hud-pill score-pill">
+        <span class="hud-ico" id="hud-ico-score" aria-hidden="true">⭐</span>
+        <div class="hud-block">
+          <span class="hud-label" id="hud-label-score">得分</span>
+          <span id="hud-score">0</span>
+        </div>
+      </div>
+      <div class="hud-pill invuln-pill is-idle" id="hud-invuln-pill" title="无敌剩余时间">
+        <span class="hud-ico" aria-hidden="true">🛡️</span>
+        <div class="hud-block">
+          <span class="hud-label" id="hud-label-invuln">无敌</span>
+          <span id="hud-invuln">3</span>
+        </div>
+      </div>
+      <div class="hud-pill boost-pill is-idle" id="hud-boost-pill" title="加速剩余时间（键 X）">
+        <span class="hud-ico" aria-hidden="true">⚡</span>
+        <div class="hud-block">
+          <span class="hud-label" id="hud-label-boost">加速</span>
+          <span id="hud-boost">3</span>
+        </div>
+      </div>
+    </header>
+
+    <canvas id="game" width="420" height="740" aria-label="大角牛快跑画面"></canvas>
+
+    <div id="run-chrome">
+      <div id="run-shop" class="run-shop" aria-label="局内道具">
+        <button type="button" class="run-power" data-shop-use="bomb" data-price="300" aria-label="使用炸弹，300 金币，清掉画面上全部障碍">
+          <span class="run-power-ico" aria-hidden="true">💣</span>
+          <span class="run-power-name">炸弹</span>
+          <span class="use-label">300</span>
+        </button>
+        <button type="button" class="run-power" data-shop-use="invuln" data-price="500" aria-label="使用无敌，500 金币">
+          <span class="run-power-ico" aria-hidden="true">🛡️</span>
+          <span class="run-power-name">无敌</span>
+          <span class="use-label">500</span>
+        </button>
+        <button type="button" class="run-power" data-shop-use="boost" data-price="500" aria-label="使用加速，500 金币">
+          <span class="run-power-ico" aria-hidden="true">⚡</span>
+          <span class="run-power-name">加速</span>
+          <span class="use-label">500</span>
+        </button>
+      </div>
+      <div class="career-strip career-strip-run" aria-label="生涯累计">
+        <div class="career-cell">
+          <span class="career-label">总积分</span>
+          <strong data-career="score">0</strong>
+        </div>
+        <div class="career-cell">
+          <span class="career-label">总金币</span>
+          <strong data-career="coins">0</strong>
+        </div>
+        <div class="career-cell">
+          <span class="career-label">总距离</span>
+          <strong data-career="distance">0</strong>
+        </div>
+      </div>
+    </div>
+
+    <div id="ops-hint" class="hidden" role="dialog" aria-modal="true" aria-labelledby="ops-hint-title">
+      <div class="ops-hint-card">
+        <h2 id="ops-hint-title">操作提示</h2>
+        <ul>
+          <li>左右滑：换道</li>
+          <li>上滑，或点屏幕上半部分：跳跃</li>
+          <li>下滑：下蹲。低的障碍可以钻过去；黄黑高栏只能蹲，起跳会撞上</li>
+          <li id="ops-hint-powers">炸弹、无敌、加速在画面下方，用商店里买的次数</li>
+        </ul>
+        <button type="button" id="btn-ops-hint" class="primary">知道了</button>
+      </div>
+    </div>
+
+    <div id="home" class="show" aria-label="首页">
+      <div class="card home-card">
+        <p class="slogan">勇敢牛牛，不怕困难</p>
+        <h1>大角牛快跑</h1>
+        <p class="hint">首页 · 选好再跑</p>
+
+        <div id="auth-bar" class="auth-bar">
+          <div id="auth-profile" class="auth-profile">
+            <img id="auth-avatar" class="auth-avatar hidden" alt="" width="32" height="32" />
+            <span id="auth-nick" class="auth-nick">本机账号</span>
+            <button type="button" id="btn-guest-nick" class="linkish">改昵称</button>
+          </div>
+          <p id="device-note" class="device-note">同一浏览器会记住金币和成绩。清除本站数据会换成新账号；换一部手机是另一个账号。</p>
+        </div>
+
+        <div class="career-strip" aria-label="生涯累计">
+          <div class="career-cell">
+            <span class="career-label">总积分</span>
+            <strong data-career="score">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总金币</span>
+            <strong data-career="coins">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总距离</span>
+            <strong data-career="distance">0</strong>
+          </div>
+        </div>
+
+        <button type="button" id="btn-home-start" class="primary">开始游戏</button>
+
+        <section class="rank-panel" aria-label="排行榜">
+          <h2 class="rank-heading">排行榜</h2>
+          <div class="rank-tabs" role="tablist" aria-label="三个排行榜">
+            <button type="button" class="rank-tab selected" role="tab" data-rank="score" aria-selected="true" aria-controls="rank-list">积分排行榜</button>
+            <button type="button" class="rank-tab" role="tab" data-rank="coins" aria-selected="false" aria-controls="rank-list">金币排行榜</button>
+            <button type="button" class="rank-tab" role="tab" data-rank="distance" aria-selected="false" aria-controls="rank-list">距离排行榜</button>
+          </div>
+          <p id="rank-status" class="lb-mine">正在连接账号…</p>
+          <p id="rank-mine" class="lb-mine"></p>
+          <ol id="rank-list" class="lb-list" role="tabpanel" aria-live="polite"></ol>
+        </section>
+
+        <div class="lb-panel" id="history-panel" aria-label="我的竖屏记录">
+          <div class="lb-col history-col">
+            <h3>我的竖屏记录</h3>
+            <p id="history-best" class="lb-mine"></p>
+            <ol id="history-list" class="lb-list"></ol>
+          </div>
+        </div>
+
+        <p class="legal-links">
+          <a href="about.html">关于</a>
+          · <a href="privacy.html">隐私政策</a>
+          · <a href="../">横版网页</a>
+        </p>
+      </div>
+    </div>
+
+    <div id="overlay" class="hidden">
+      <div class="card">
+        <button type="button" id="btn-back-home" class="ghost back-home">返回首页</button>
+        <p class="slogan" id="title-slogan">勇敢牛牛，不怕困难</p>
+        <h1 id="title-heading">大角牛快跑</h1>
+        <p class="hint" id="mode-hint">选地图 · 点下方卡片（手机无需键盘）</p>
+
+        <div class="career-strip" aria-label="生涯累计">
+          <div class="career-cell">
+            <span class="career-label">总积分</span>
+            <strong data-career="score">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总金币</span>
+            <strong data-career="coins">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总距离</span>
+            <strong data-career="distance">0</strong>
+          </div>
+        </div>
+
+        <div id="shop-panel" class="shop-panel" aria-label="道具商店">
+          <div class="shop-head">
+            <span>道具商店</span>
+            <span id="shop-wallet">钱包 —</span>
+          </div>
+          <div class="shop-grid">
+            <button type="button" class="shop-card" data-shop-buy="bomb" data-price="300" aria-label="购买炸弹，300 金币，清掉画面上全部障碍">
+              <span class="shop-ico" aria-hidden="true">💣</span>
+              <span class="shop-name">炸弹</span>
+              <span class="shop-desc">清掉画面上全部障碍</span>
+              <span class="shop-price">300</span>
+              <span class="shop-own" data-power="bomb">×0</span>
+            </button>
+            <button type="button" class="shop-card" data-shop-buy="invuln" data-price="500" aria-label="购买无敌，500 金币，10 秒无敌">
+              <span class="shop-ico" aria-hidden="true">🛡️</span>
+              <span class="shop-name">无敌</span>
+              <span class="shop-desc">10 秒撞碎障碍</span>
+              <span class="shop-price">500</span>
+              <span class="shop-own" data-power="invuln">×0</span>
+            </button>
+            <button type="button" class="shop-card" data-shop-buy="boost" data-price="500" aria-label="购买加速，500 金币，短冲刺">
+              <span class="shop-ico" aria-hidden="true">⚡</span>
+              <span class="shop-name">加速</span>
+              <span class="shop-desc">短冲刺 ×1.45</span>
+              <span class="shop-price">500</span>
+              <span class="shop-own" data-power="boost">×0</span>
+            </button>
+          </div>
+          <p class="shop-note">购买放进背包，开跑后用下方按钮。背包是空的就按标价直接扣钱包。花的是已入账金币，本局新捡的要等结算。</p>
+        </div>
+
+        <div id="hero-pick" role="group" aria-label="选择角色">
+          <button type="button" class="hero-card selected" data-hero="bull" aria-pressed="true">
+            <span class="hero-emoji" aria-hidden="true">🐂</span>
+            <span class="hero-name">大角牛</span>
+          </button>
+          <button type="button" class="hero-card" data-hero="deer" aria-pressed="false">
+            <span class="hero-emoji" aria-hidden="true">🦌</span>
+            <span class="hero-name">小鹿</span>
+          </button>
+          <button type="button" class="hero-card" data-hero="dog" aria-pressed="false">
+            <span class="hero-emoji" aria-hidden="true">🐕</span>
+            <span class="hero-name">小狗</span>
+          </button>
+        </div>
+
+        <div id="mode-pick" role="group" aria-label="选择地图">
+          <button type="button" class="mode-card selected" data-mode="earth" aria-pressed="true">
+            <span class="mode-emoji" aria-hidden="true">🛤️</span>
+            <span class="mode-name">土路跑酷</span>
+            <span class="mode-desc">阳光土路 · 列车路障</span>
+          </button>
+          <button type="button" class="mode-card forest" data-mode="forest" aria-pressed="false">
+            <span class="mode-badge" aria-hidden="true">新</span>
+            <span class="mode-emoji" aria-hidden="true">🌲</span>
+            <span class="mode-name">优美森林</span>
+            <span class="mode-desc">神光小径 · 道边树影</span>
+          </button>
+          <button type="button" class="mode-card plant" data-mode="plant" aria-pressed="false">
+            <span class="mode-emoji" aria-hidden="true">🌻</span>
+            <span class="mode-name">植物跑酷</span>
+            <span class="mode-desc">草坪打僵尸 · 向日葵/加特林</span>
+          </button>
+          <button type="button" class="mode-card" data-mode="space" aria-pressed="false">
+            <span class="mode-emoji" aria-hidden="true">✨</span>
+            <span class="mode-name">悬空空间</span>
+            <span class="mode-desc">星轨平台 · 水晶障碍</span>
+          </button>
+          <button type="button" class="mode-card plane" data-mode="plane" aria-pressed="false">
+            <span class="mode-badge" aria-hidden="true">新</span>
+            <span class="mode-emoji" aria-hidden="true">✈️</span>
+            <span class="mode-name">飞机大战</span>
+            <span class="mode-desc">默认扫射 · 大小怪多击 · 弯道</span>
+          </button>
+          <button type="button" class="mode-card chill" data-mode="chill" aria-pressed="false">
+            <span class="mode-emoji" aria-hidden="true">😎</span>
+            <span class="mode-name">慢慢跑酷</span>
+            <span class="mode-desc">悠闲慢速 · 积分看时长</span>
+          </button>
+        </div>
+
+        <ul class="tips">
+          <li>左右滑 = 换道（电脑 ← →）</li>
+          <li>上滑，或点屏幕上半 = 起跳（电脑 ↑ / 空格）</li>
+          <li>下滑 = 下蹲。低障可以钻；黄黑高栏只能蹲，起跳会撞上（电脑 ↓）</li>
+          <li>画面下方是商店道具：炸弹清全屏、无敌 10 秒、短冲刺</li>
+          <li>🌲 优美森林：背对四分之三跑 · 神光树影（键6）</li>
+          <li>🌻 植物跑酷：捡向日葵/豌豆/加特林/坚果打僵尸</li>
+          <li>✈️ 飞机大战：默认扫射；小怪3血/大怪10血；弯道；键0</li>
+          <li>电脑 B 当前道炸弹（植物樱桃 / 飞机导弹），X 加速，I 无敌。每局自带加速和无敌各 3 次</li>
+          <li>📺 撞障看激励广告（示意 2 秒）后继续；跳过两次认栽结算；看完送短护盾/清道</li>
+        </ul>
+
+        <p id="wallet-line" class="wallet-line">正在连接钱包…</p>
+        <p class="about-blurb" id="about-blurb">
+          大角牛快跑 · 竖屏三道跑酷：选角选图，换道跳跃躲障捡币；含飞机大战。口号「勇敢牛牛，不怕困难」。
+          撞障激励为本地占位（不加载广告 SDK）。
+          捡到的金币记入和横版共用的钱包。全服排行按生涯总积分、总金币、总距离。
+          <a href="about.html">关于</a> ·
+          <a href="privacy.html">隐私政策</a> ·
+          <a href="../">横版网页</a>
+        </p>
+
+        <!-- AdSense display slot (title / menu). Disabled until __RB_ADSENSE.enabled + real ca-pub. -->
+        <div id="ad-slot-menu" class="ad-slot ad-slot-menu" data-ad-slot="menu" aria-label="展示广告位（未启用）">
+          <div class="ad-slot-placeholder">
+            <span class="ad-slot-badge">Ad</span>
+            <span>展示广告位（标题页）· 未启用，示意占位</span>
+          </div>
+          <!--
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+               data-ad-slot="0000000000"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          -->
+        </div>
+
+        <button type="button" id="btn-start" class="primary">▶ 开始跑</button>
+        <p class="legal-links">
+          <a href="about.html">关于</a>
+          · <a href="privacy.html">隐私政策</a>
+        </p>
+      </div>
+    </div>
+
+    <div id="rewarded-ad" class="hidden" aria-live="polite" role="dialog" aria-modal="true" aria-labelledby="rewarded-ad-label">
+      <div class="rewarded-ad-card">
+        <p class="rewarded-ad-label" id="rewarded-ad-label">激励视频（示意）</p>
+        <p class="rewarded-ad-title" id="rewarded-ad-title">撞到了！</p>
+        <p class="rewarded-ad-countdown" id="rewarded-ad-countdown">2.0s</p>
+        <p class="rewarded-ad-hint" id="rewarded-ad-hint">撞到了！看完广告越过障碍</p>
+        <div class="rewarded-ad-actions">
+          <button type="button" id="rewarded-ad-complete" class="primary" disabled>看完</button>
+          <button type="button" id="rewarded-ad-skip" class="ghost">跳过</button>
+        </div>
+        <p class="rewarded-ad-foot">GitHub Pages 占位 · 接入微信小游戏 / TapTap 时替换</p>
+      </div>
+    </div>
+    <div id="reward-toast" class="reward-toast hidden" aria-live="polite"></div>
+
+    <div id="over" class="hidden" aria-live="assertive">
+      <div class="card">
+        <p class="slogan">勇敢牛牛，不怕困难</p>
+        <p class="over-badge">GAME OVER</p>
+        <h2>撞到了！</h2>
+        <p class="over-encourage">结算完成，回到首页</p>
+        <p class="result" id="over-line-dist">距离 <strong id="over-dist">0</strong> · 金币 <strong id="over-coins">0</strong></p>
+        <p class="result score" id="over-line-score">得分 <strong id="over-score">0</strong></p>
+        <div class="career-strip career-strip-over" aria-label="生涯累计">
+          <div class="career-cell">
+            <span class="career-label">总积分</span>
+            <strong data-career="score">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总金币</span>
+            <strong data-career="coins">0</strong>
+          </div>
+          <div class="career-cell">
+            <span class="career-label">总距离</span>
+            <strong data-career="distance">0</strong>
+          </div>
+        </div>
+        <p class="result" id="over-line-time">本局时长 <strong id="over-playtime">0秒</strong></p>
+        <div id="ad-slot-over" class="ad-slot ad-slot-over" data-ad-slot="result" aria-label="展示广告位（结算页，未启用）">
+          <div class="ad-slot-placeholder">
+            <span class="ad-slot-badge">Ad</span>
+            <span>展示广告位（结算）· 未启用，示意占位</span>
+          </div>
+          <!--
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+               data-ad-slot="0000000001"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          -->
+        </div>
+        <p id="over-sync" class="over-sync"></p>
+        <button type="button" id="btn-go-home" class="primary">返回首页</button>
+        <p class="legal-links compact">
+          <a href="about.html">关于</a>
+          · <a href="privacy.html">隐私</a>
+        </p>
+      </div>
+    </div>
+
+    <div id="login-modal" class="login-modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <div class="login-card">
+        <h2 id="login-title">改昵称</h2>
+        <p class="login-note">身份是这台浏览器里的设备号，改昵称不会换账号。昵称会同步到和横版共用的钱包。</p>
+        <label class="field">
+          <span>昵称</span>
+          <input id="login-nick" type="text" maxlength="16" placeholder="显示在排行榜" autocomplete="nickname" />
+        </label>
+        <label class="field">
+          <span>头像 URL（可选）</span>
+          <input id="login-avatar" type="url" maxlength="300" placeholder="https://..." inputmode="url" />
+        </label>
+        <button type="button" id="btn-login-confirm" class="primary">保存昵称</button>
+        <button type="button" id="btn-login-guest" class="ghost">随机游客昵称</button>
+        <button type="button" id="btn-login-cancel" class="ghost">取消</button>
+        <p class="login-foot">头像 URL 只存在这台设备上，不会上传。</p>
+      </div>
+    </div>
+  </div>
+  <!--
+    AdSense: do NOT load pagead2.googlesyndication.com until you have a real ca-pub
+    and set window.__RB_ADSENSE.enabled = true. Fake publisher ids violate policy.
+    See docs/ADSENSE_GITHUB_PAGES.md
+  -->
+  <script>
+    window.__RB_ADSENSE = {
+      enabled: false,
+      /* Paste your real publisher id after AdSense approval, e.g. "ca-pub-1234..." */
+      client: "",
+      /* Optional slot ids from AdSense UI */
+      slots: { menu: "", result: "" },
+      /* When true and client set, game.js may inject adsbygoogle once on production host */
+      loadScript: false,
+      provider: "adsense-display",
+      note: "Display only. Rewarded hit ads stay on window.__RB_REWARDED_AD (mock)."
+    };
+  </script>
+  <script src="game.js?v=duckbar1"></script>
+  <script src="sync.js?v=home2"></script>
+</body>
+</html>

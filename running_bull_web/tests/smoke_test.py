@@ -85,6 +85,26 @@ r2 = call('POST', '/runs', {}, B)['run_id']
 before = call('GET', '/me', dev=B)['user']['coins']
 after = call('POST', f'/runs/{r2}/revive', {'method': 'coins'}, B)['user']['coins']; assert after == before - 100
 f2 = call('POST', f'/runs/{r2}/finish', {'score': 50, 'coins': 3}, B); assert not f2['capped'] and f2['earned'] == 3
+# 竖屏结算：金币入账，但不改全服 best（和横版计分不是同一套）
+P = dev()
+pu = call('POST', '/guest', {'device_id': P, 'nickname': '竖屏牛'})['user']
+assert pu['best'] == 0 and pu['coins'] == 100
+pr = call('POST', '/runs', {}, P)['run_id']
+pf = call('POST', f'/runs/{pr}/finish', {'score': 999999, 'coins': 5, 'board': 'portrait', 'mode': 'earth', 'hero': 'bull', 'distance': 5000}, P)
+assert pf['earned'] == 5 and pf['new_record'] is False and pf['user']['best'] == 0 and pf['user']['coins'] == 105, pf
+assert pf['portrait_best'] == pf['score'] and pf['score'] < 999999 and pf['board'] == 'portrait', pf
+hist = call('GET', '/history?board=portrait', dev=P)
+assert hist['best'] == pf['score'] and hist['portrait_best'] == pf['score'] and len(hist['runs']) == 1, hist
+row = hist['runs'][0]
+assert row['mode'] == 'earth' and row['hero'] == 'bull' and row['board'] == 'portrait' and row['distance'] == pf['distance'] and row['play_ms'] >= 1000, row
+pr2 = call('POST', '/runs', {}, P)['run_id']
+pf2 = call('POST', f'/runs/{pr2}/finish', {'score': 10, 'coins': 1, 'board': 'portrait', 'mode': 'forest', 'hero': 'deer', 'distance': 20}, P)
+assert pf2['user']['best'] == 0 and pf2['portrait_best'] == pf['score'] and pf2['user']['coins'] == 106, pf2
+hist2 = call('GET', '/history?board=portrait&limit=10', dev=P)
+assert hist2['best'] == pf['score'] and hist2['runs'][0]['mode'] == 'forest' and len(hist2['runs']) == 2, hist2
+wx = call('GET', '/wechat/config')
+assert wx['enabled'] is False and wx['scope'] == 'snsapi_userinfo' and 'WECHAT_APP_ID' in wx['reason'] and 'secret' not in wx, wx
+call('GET', '/wechat/start', None, P, 503)
 # 排行榜
 top = call('GET', '/leaderboard')['top']; assert top[0]['best'] >= top[-1]['best'] and len(top) <= 20
 assert any(t['nickname'] == '阿牛' for t in top)
