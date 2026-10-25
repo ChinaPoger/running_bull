@@ -3,10 +3,11 @@
 
 启动：python3 server.py            （默认 http://0.0.0.0:3000 ，SQLite；接口前缀 /api）
 环境变量：PORT、HOST、PUBLIC_URL（邀请链接网址，默认 https://bull.lingecho.com）、DB_URL / DB_HOST...（见 db.py）、TRUST_PROXY=1（在 nginx 后面时读取 X-Forwarded-For）
+微信登录（可选）：WECHAT_APP_ID、WECHAT_APP_SECRET、WECHAT_REDIRECT_URI、WECHAT_OAUTH_SCOPE（默认 snsapi_userinfo）。不配置就能跑，只是微信登录不可用。
 """
-import json, os, re, secrets, string, time, mimetypes, hashlib, hmac, threading
+import json, os, re, secrets, string, time, mimetypes, hashlib, hmac, threading, urllib.request, urllib.error
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urlencode
 from db import DB
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +51,9 @@ PACKS = {p['id']: p for p in CATALOG['topup']}
 R = CATALOG['rules']
 # 防作弊上限：按本局真实经过的秒数估算（游戏里最快约 170 分/秒、平均金币不到 8 个/秒，留余量）
 SCORE_PER_SEC, COINS_PER_SEC = 220, 12
+# 竖屏计分是距离 + 金币，速度大约 220–400/秒，不能套横版的 220 分/秒，否则正常成绩会被削掉。
+# 这个上限只用来拦住明显伪造的分数；竖屏分数不写入 users.best。
+PORTRAIT_SCORE_PER_SEC, PORTRAIT_DIST_PER_SEC = 900, 800
 
 db = DB()
 # 邀请链接用的对外网址（本地调试可设成 http://127.0.0.1:3000）
@@ -86,12 +90,14 @@ def add_item(uid, item, qty):
 def user_view(u):
     items = inv(u['id'])
     stats = db.one('SELECT COUNT(*) AS n, COALESCE(SUM(reward),0) AS s FROM invites WHERE inviter_id = ?', (u['id'],))
+    wx = db.one('SELECT nickname, avatar FROM wechat_users WHERE user_id = ?', (u['id'],))
     return {
         'id': u['id'], 'nickname': u['nickname'], 'coins': u['coins'], 'best': u['best'],
         'invite_code': u['invite_code'], 'equipped_char': u['equipped_char'], 'equipped_bg': u['equipped_bg'],
         'owned': ['bull', 'farm'] + [k for k, v in items.items() if v > 0 and ITEMS.get(k, ('',))[0] != 'consumables'],
         'consumables': {c['id']: items.get(c['id'], 0) for c in CATALOG['consumables']},
         'invited_count': int(stats['n']), 'invite_earned': int(stats['s']),
+        'wechat': bool(wx), 'avatar': (wx or {}).get('avatar') or '',
     }
 
 
@@ -250,28 +256,72 @@ def api_revive(h, body, rid):
     return {'ok': True, 'user': user_view(get_user(u['device_id']))}
 
 
+def _slug(value):
+    return re.sub(r'[^a-z0-9_]', '', str(value or '').lower())[:16]
+
+
 def api_finish(h, body, rid):
     u = h.user()
     r = get_run(u, rid)
     secs = max(1.0, (now() - r['started_at']) / 1000.0)
     score = max(0, int(body.get('score') or 0))
     coins = max(0, int(body.get('coins') or 0))
-    cap_s, cap_c = int(secs * SCORE_PER_SEC + 100), int(secs * COINS_PER_SEC + 10)
+    # 竖屏 /mobile-web/ 计分和横版不是同一套：金币计入共用钱包，分数写入 runs，但不改全服 users.best。
+    portrait = str(body.get('board') or '') == 'portrait'
+    if portrait:
+        cap_s = int(secs * PORTRAIT_SCORE_PER_SEC + 200)
+    else:
+        cap_s = int(secs * SCORE_PER_SEC + 100)
+    cap_c = int(secs * COINS_PER_SEC + 10)
     capped = score > cap_s or coins > cap_c
     score, coins = min(score, cap_s), min(coins, cap_c)
     earned = coins * (2 if r['dbl'] else 1)
-    # 竖屏 /mobile-web/ 计分和横版不是同一套，只把金币计入共用钱包，不改全服 best。
-    portrait = str(body.get('board') or '') == 'portrait'
-    db.execute('UPDATE runs SET finished = 1, ended_at = ?, score = ?, coins = ? WHERE id = ?', (now(), score, earned, rid))
+    distance = max(0, min(int(secs * PORTRAIT_DIST_PER_SEC + 400), int(body.get('distance') or 0)))
+    play_ms = int(secs * 1000)
+    wx = db.one('SELECT openid FROM wechat_users WHERE user_id = ?', (u['id'],))
+    ended = now()
+    db.execute(
+        'UPDATE runs SET finished = 1, ended_at = ?, score = ?, coins = ?, board = ?, mode = ?, hero = ?, distance = ?, play_ms = ?, wx_openid = ? WHERE id = ?',
+        (ended, score, earned, 'portrait' if portrait else 'landscape', _slug(body.get('mode')), _slug(body.get('hero')),
+         distance, play_ms, (wx or {}).get('openid') or '', rid))
     if earned:
         add_coins(u['id'], earned, 'run_portrait' if portrait else 'run')
     new_record = (not portrait) and score > u['best']
     if new_record:
         db.execute('UPDATE users SET best = ? WHERE id = ?', (score, u['id']))
     db.commit()
-    rank = db.one('SELECT COUNT(*) AS n FROM users WHERE best > ?', (max(score, u['best']),))['n'] + 1
+    fresh = get_user(u['device_id'])
+    rank = db.one('SELECT COUNT(*) AS n FROM users WHERE best > ?', (max(score, fresh['best']),))['n'] + 1
+    best_row = db.one("SELECT MAX(score) AS b FROM runs WHERE user_id = ? AND board = 'portrait' AND finished = 1", (u['id'],))
     return {'score': score, 'earned': earned, 'capped': capped, 'new_record': new_record, 'rank': rank,
-            'user': user_view(get_user(u['device_id']))}
+            'board': 'portrait' if portrait else 'landscape', 'distance': distance, 'play_ms': play_ms,
+            'portrait_best': int((best_row or {}).get('b') or 0), 'user': user_view(fresh)}
+
+
+def api_history(h, body):
+    """当前账号的对局记录。默认只看竖屏。成绩在 runs 表里，重启服务还在。"""
+    u = h.user()
+    board = str(h._qs.get('board', ['portrait'])[0] or 'portrait')
+    if board not in ('portrait', 'landscape', 'all'):
+        board = 'portrait'
+    try:
+        limit = max(1, min(50, int(h._qs.get('limit', ['20'])[0])))
+    except (TypeError, ValueError):
+        limit = 20
+    if board == 'all':
+        rows = db.all(
+            'SELECT id, score, coins, started_at, ended_at, board, mode, hero, distance, play_ms FROM runs WHERE user_id = ? AND finished = 1 ORDER BY ended_at DESC LIMIT ?',
+            (u['id'], limit))
+    else:
+        rows = db.all(
+            'SELECT id, score, coins, started_at, ended_at, board, mode, hero, distance, play_ms FROM runs WHERE user_id = ? AND finished = 1 AND board = ? ORDER BY ended_at DESC LIMIT ?',
+            (u['id'], board, limit))
+    def board_best(name):
+        row = db.one('SELECT MAX(score) AS b FROM runs WHERE user_id = ? AND finished = 1 AND board = ?', (u['id'], name))
+        return int((row or {}).get('b') or 0)
+    portrait_best = board_best('portrait')
+    shown = portrait_best if board in ('portrait', 'all') else board_best(board)
+    return {'board': board, 'best': shown, 'portrait_best': portrait_best, 'runs': rows}
 
 
 def api_topup(h, body):
@@ -438,9 +488,9 @@ def api_delete_account(h, body):
         ip_limited(h.client_ip(), add=True)
         raise ApiError(403, '昵称或 PIN 不对')
     uid = a['user_id']
-    for t, col in [('sessions', 'user_id'), ('accounts', 'user_id'), ('xb_prefs', 'user_id'), ('inventory', 'user_id'),
-                   ('runs', 'user_id'), ('ads', 'user_id'), ('orders', 'user_id'), ('coin_log', 'user_id'),
-                   ('invites', 'invitee_id'), ('users', 'id')]:
+    for t, col in [('sessions', 'user_id'), ('accounts', 'user_id'), ('xb_prefs', 'user_id'), ('wechat_users', 'user_id'),
+                   ('inventory', 'user_id'), ('runs', 'user_id'), ('ads', 'user_id'), ('orders', 'user_id'),
+                   ('coin_log', 'user_id'), ('invites', 'invitee_id'), ('users', 'id')]:
         db.execute('DELETE FROM %s WHERE %s = ?' % (t, col), (uid,))
     db.commit()
     return {'ok': True, 'deleted_user_id': uid}
@@ -550,6 +600,173 @@ def xb_top(h, body):
             'text': '\n'.join('%d. %s  %d' % (i + 1, r['nickname'], r['best']) for i, r in enumerate(rows)) or '还没有人上榜'}
 
 
+# ---------------- 微信公众号网页授权（snsapi_userinfo）----------------
+# 只在配了 WECHAT_APP_ID 和 WECHAT_APP_SECRET 时可用。密钥只从环境变量读，不写进代码。
+def wechat_settings():
+    appid = os.environ.get('WECHAT_APP_ID', '').strip()
+    secret = os.environ.get('WECHAT_APP_SECRET', '').strip()
+    scope = os.environ.get('WECHAT_OAUTH_SCOPE', 'snsapi_userinfo').strip() or 'snsapi_userinfo'
+    if scope not in ('snsapi_userinfo', 'snsapi_base'):
+        scope = 'snsapi_userinfo'
+    redirect = os.environ.get('WECHAT_REDIRECT_URI', '').strip() or (PUBLIC_URL + '/api/wechat/callback')
+    missing = []
+    if not appid:
+        missing.append('WECHAT_APP_ID')
+    if not secret:
+        missing.append('WECHAT_APP_SECRET')
+    return {
+        'enabled': not missing,
+        'appid': appid,
+        'secret': secret,
+        'scope': scope,
+        'redirect': redirect,
+        'reason': ('服务器未配置 ' + '、'.join(missing)) if missing else '',
+    }
+
+
+def api_wechat_config(h, body):
+    s = wechat_settings()
+    host = urlparse(s['redirect']).hostname or ''
+    return {'enabled': s['enabled'], 'scope': s['scope'], 'reason': s['reason'],
+            'redirect_host': host, 'product': 'mp_oauth', 'default_scope': 'snsapi_userinfo'}
+
+
+def _http_json(url):
+    req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return json.loads(resp.read().decode('utf-8'))
+    except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        raise ApiError(502, '连不上微信')
+
+
+def wechat_exchange(code):
+    """用 code 换 openid。snsapi_userinfo 时再取昵称和头像。不要把 secret 或 code 打进日志。"""
+    s = wechat_settings()
+    if not s['enabled']:
+        raise ApiError(503, s['reason'] or '微信登录未配置')
+    tok = _http_json('https://api.weixin.qq.com/sns/oauth2/access_token?' + urlencode({
+        'appid': s['appid'], 'secret': s['secret'], 'code': code, 'grant_type': 'authorization_code',
+    }))
+    if tok.get('errcode') or not tok.get('openid') or not tok.get('access_token'):
+        raise ApiError(502, '微信换票失败')
+    profile = {
+        'openid': str(tok.get('openid'))[:64],
+        'unionid': str(tok.get('unionid') or '')[:64],
+        'nickname': '',
+        'avatar': '',
+    }
+    if not re.fullmatch(r'[A-Za-z0-9_\-]{6,64}', profile['openid']):
+        raise ApiError(502, '微信返回的 openid 无法识别')
+    if s['scope'] == 'snsapi_userinfo':
+        info = _http_json('https://api.weixin.qq.com/sns/userinfo?' + urlencode({
+            'access_token': tok['access_token'], 'openid': profile['openid'], 'lang': 'zh_CN',
+        }))
+        if not info.get('errcode'):
+            profile['nickname'] = str(info.get('nickname') or '').strip()[:32]
+            profile['avatar'] = str(info.get('headimgurl') or '')[:512]
+            if info.get('unionid'):
+                profile['unionid'] = str(info.get('unionid'))[:64]
+    return profile
+
+
+def _new_user(nick, device_id, ip):
+    code = new_code()
+    while db.one('SELECT id FROM users WHERE invite_code = ?', (code,)):
+        code = new_code()
+    nick = (nick or '').strip()[:32] or ('牛友' + code[:4])
+    db.execute('INSERT INTO users (device_id, nickname, coins, best, invite_code, reg_ip, created_at) VALUES (?,?,?,?,?,?,?)',
+               (device_id, nick, 0, 0, code, ip or '', now()))
+    u = db.one('SELECT * FROM users WHERE device_id = ?', (device_id,))
+    add_coins(u['id'], R['start_coins'], 'welcome')
+    return db.one('SELECT * FROM users WHERE id = ?', (u['id'],))
+
+
+def _guest_has_progress(u):
+    if db.one('SELECT id FROM runs WHERE user_id = ? AND finished = 1 LIMIT 1', (u['id'],)):
+        return True
+    if int(u['coins']) != R['start_coins'] or int(u['best']) > 0:
+        return True
+    return bool(db.one('SELECT item_id FROM inventory WHERE user_id = ? AND qty > 0 LIMIT 1', (u['id'],)))
+
+
+def merge_guest_into(guest, target):
+    """把这台设备上还没绑微信的游客进度并进已有微信账号。刚建好、还没玩过的游客不把 100 起始金币转过去。"""
+    if not guest or not target or guest['id'] == target['id']:
+        return target
+    if db.one('SELECT openid FROM wechat_users WHERE user_id = ?', (guest['id'],)):
+        return target
+    if _guest_has_progress(guest):
+        if int(guest['coins']):
+            add_coins(target['id'], int(guest['coins']), 'wechat_merge')
+        if int(guest['best']) > int(target['best']):
+            db.execute('UPDATE users SET best = ? WHERE id = ?', (guest['best'], target['id']))
+        db.execute('UPDATE coin_log SET user_id = ? WHERE user_id = ?', (target['id'], guest['id']))
+        for row in db.all('SELECT item_id, qty FROM inventory WHERE user_id = ?', (guest['id'],)):
+            add_item(target['id'], row['item_id'], row['qty'])
+    else:
+        db.execute('DELETE FROM coin_log WHERE user_id = ?', (guest['id'],))
+    for table in ('runs', 'ads', 'orders'):
+        db.execute('UPDATE %s SET user_id = ? WHERE user_id = ?' % table, (target['id'], guest['id']))
+    db.execute('DELETE FROM inventory WHERE user_id = ?', (guest['id'],))
+    db.execute('DELETE FROM sessions WHERE user_id = ?', (guest['id'],))
+    db.execute('DELETE FROM accounts WHERE user_id = ?', (guest['id'],))
+    db.execute('DELETE FROM xb_prefs WHERE user_id = ?', (guest['id'],))
+    db.execute('DELETE FROM coin_log WHERE user_id = ?', (guest['id'],))
+    db.execute('DELETE FROM users WHERE id = ?', (guest['id'],))
+    return db.one('SELECT * FROM users WHERE id = ?', (target['id'],))
+
+
+def attach_wechat(profile, device_id, ip='', invite_code=''):
+    """openid 已存在就登录那个账号，并把当前游客进度并进去。openid 是新的就绑到当前游客，这样已有成绩不用搬家。"""
+    openid = profile['openid']
+    unionid = profile.get('unionid') or ''
+    nick = profile.get('nickname') or ''
+    avatar = profile.get('avatar') or ''
+    guest = None
+    if device_id and re.fullmatch(r'[A-Za-z0-9_-]{8,64}', device_id):
+        guest = db.one('SELECT * FROM users WHERE device_id = ?', (device_id,))
+    existing = db.one('SELECT * FROM wechat_users WHERE openid = ?', (openid,))
+    if existing:
+        user = db.one('SELECT * FROM users WHERE id = ?', (existing['user_id'],))
+        if not user:
+            raise ApiError(500, '微信账号数据不完整')
+        if guest and guest['id'] != user['id']:
+            user = merge_guest_into(guest, user)
+        db.execute('UPDATE wechat_users SET unionid = ?, nickname = ?, avatar = ?, updated_at = ? WHERE openid = ?',
+                   (unionid, nick, avatar, now(), openid))
+    else:
+        guest_wx = db.one('SELECT openid FROM wechat_users WHERE user_id = ?', (guest['id'],)) if guest else None
+        if guest and not guest_wx:
+            user = guest
+        else:
+            user = _new_user(nick, 'wx_' + secrets.token_hex(12), ip)
+            code = str(invite_code or '').strip().upper()
+            if code:
+                class _H:
+                    def client_ip(_self):
+                        return ip or ''
+                try_invite(_H(), user, code)
+                user = db.one('SELECT * FROM users WHERE id = ?', (user['id'],))
+        db.execute(
+            'INSERT INTO wechat_users (openid, unionid, user_id, nickname, avatar, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+            (openid, unionid, user['id'], nick, avatar, now(), now()))
+    if nick:
+        db.execute('UPDATE users SET nickname = ? WHERE id = ?', (nick[:32], user['id']))
+    tok = new_session(user['id'])
+    db.commit()
+    return tok, db.one('SELECT * FROM users WHERE id = ?', (user['id'],))
+
+
+def api_wechat_logout(h, body):
+    tok = h.session_from_cookie() or h.headers.get('X-Session') or str(body.get('token') or '')
+    if tok:
+        db.execute('DELETE FROM sessions WHERE token = ?', (tok,))
+        db.commit()
+    h._clear_session_cookie = True
+    return {'ok': True}
+
+
 ROUTES = [
     ('GET', r'/api/health', lambda h, b: {'ok': True, 'db': db.kind}),
     ('GET', r'/api/catalog', lambda h, b: CATALOG),
@@ -562,6 +779,9 @@ ROUTES = [
     ('POST', r'/api/ads', api_ad_start),
     ('POST', r'/api/runs/(\w+)/revive', api_revive),
     ('POST', r'/api/runs/(\w+)/finish', api_finish),
+    ('GET', r'/api/history', api_history),
+    ('GET', r'/api/wechat/config', api_wechat_config),
+    ('POST', r'/api/wechat/logout', api_wechat_logout),
     ('POST', r'/api/topup', api_topup),
     ('GET', r'/api/leaderboard', api_leaderboard),
     ('GET', r'/api/invite', api_invite),
@@ -598,10 +818,49 @@ class Handler(BaseHTTPRequestHandler):
             return self.headers['X-Forwarded-For'].split(',')[0].strip()
         return self.client_address[0]
 
+    def session_from_cookie(self):
+        raw = self.headers.get('Cookie') or ''
+        for part in raw.split(';'):
+            key, _, val = part.strip().partition('=')
+            if key == 'rb_session' and val:
+                return val
+        return ''
+
+    def session_cookie_header(self, token, clear=False):
+        secure = PUBLIC_URL.startswith('https://') or (self.headers.get('X-Forwarded-Proto') or '') == 'https'
+        if clear:
+            value = 'rb_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'
+        else:
+            value = 'rb_session=%s; Path=/; HttpOnly; SameSite=Lax; Max-Age=%d' % (token, SESSION_DAYS * 86400)
+        if secure:
+            value += '; Secure'
+        return value
+
+    def redirect_to(self, location, cookie_token=None, clear_cookie=False):
+        self.send_response(302)
+        self.send_header('Location', location)
+        self.send_header('Cache-Control', 'no-store')
+        if cookie_token:
+            self.send_header('Set-Cookie', self.session_cookie_header(cookie_token))
+        if clear_cookie:
+            self.send_header('Set-Cookie', self.session_cookie_header('', clear=True))
+        self.end_headers()
+
     def user(self):
-        tok = self.headers.get('X-Session') or str(self._body.get('token') or '') or self._qs.get('token', [''])[0]
+        # 显式 X-Session（XBuilder / 昵称 PIN）优先。其次是微信回调种下的 cookie。
+        # cookie 失效时退回设备号，避免一张过期 cookie 把游客也锁在外面。
+        tok = self.headers.get('X-Session') or ''
         if tok:
-            return session_user(tok)   # 昵称 + PIN 登录的会话
+            return session_user(tok)
+        cok = self.session_from_cookie()
+        if cok:
+            try:
+                return session_user(cok)
+            except ApiError:
+                pass
+        tok = str(self._body.get('token') or '') or self._qs.get('token', [''])[0]
+        if tok:
+            return session_user(tok)
         return get_user(self.headers.get('X-Device-Id') or self._body.get('device_id') or self._qs.get('device_id', [''])[0])
 
     def send_json(self, status, obj):
@@ -613,8 +872,63 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')  # 允许其他客户端（比如 XBuilder 版）跨域调用
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Device-Id, X-Session')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        if getattr(self, '_clear_session_cookie', False):
+            self.send_header('Set-Cookie', self.session_cookie_header('', clear=True))
         self.end_headers()
         self.wfile.write(data)
+
+    def wechat_start_entry(self):
+        s = wechat_settings()
+        if not s['enabled']:
+            return self.send_json(503, {'error': s['reason'] or '微信登录未配置'})
+        dev = str(self._qs.get('device_id', [''])[0] or '')
+        if dev and not re.fullmatch(r'[A-Za-z0-9_-]{8,64}', dev):
+            dev = ''
+        invite = str(self._qs.get('invite', [''])[0] or '').strip().upper()[:16]
+        state = secrets.token_urlsafe(18)
+        with db.lock:
+            db.execute('DELETE FROM oauth_states WHERE created_at < ?', (now() - 10 * 60 * 1000,))
+            db.execute('INSERT INTO oauth_states (state, device_id, invite_code, created_at) VALUES (?,?,?,?)',
+                       (state, dev, invite, now()))
+            db.commit()
+        loc = 'https://open.weixin.qq.com/connect/oauth2/authorize?' + urlencode({
+            'appid': s['appid'],
+            'redirect_uri': s['redirect'],
+            'response_type': 'code',
+            'scope': s['scope'],
+            'state': state,
+        }) + '#wechat_redirect'
+        return self.redirect_to(loc)
+
+    def wechat_callback_entry(self):
+        if self._qs.get('error'):
+            return self.redirect_to('/mobile-web/?wx=denied')
+        code = str(self._qs.get('code', [''])[0] or '')
+        state = str(self._qs.get('state', [''])[0] or '')
+        if not code or not state:
+            return self.redirect_to('/mobile-web/?wx=denied')
+        with db.lock:
+            st = db.one('SELECT * FROM oauth_states WHERE state = ?', (state,))
+            if not st or now() - int(st['created_at']) > 10 * 60 * 1000:
+                return self.redirect_to('/mobile-web/?wx=state')
+            db.execute('DELETE FROM oauth_states WHERE state = ?', (state,))
+            db.commit()
+            device_id = st.get('device_id') or ''
+            invite = st.get('invite_code') or ''
+        if not wechat_settings()['enabled']:
+            return self.redirect_to('/mobile-web/?wx=config')
+        try:
+            profile = wechat_exchange(code)
+        except Exception as e:
+            self.log_error('wechat exchange failed: %s', type(e).__name__)
+            return self.redirect_to('/mobile-web/?wx=exchange')
+        try:
+            with db.lock:
+                tok, _user = attach_wechat(profile, device_id, self.client_ip(), invite)
+        except Exception as e:
+            self.log_error('wechat bind failed: %s', type(e).__name__)
+            return self.redirect_to('/mobile-web/?wx=bind')
+        return self.redirect_to('/mobile-web/?wx=ok', cookie_token=tok)
 
     def do_OPTIONS(self):
         self.send_json(204, {})
@@ -639,6 +953,10 @@ class Handler(BaseHTTPRequestHandler):
                     self._body = json.loads(raw.decode('utf-8')) if raw else {}
                     if not isinstance(self._body, dict):
                         raise ApiError(400, '请求体需要是 JSON 对象')
+                if method == 'GET' and u.path == '/api/wechat/start':
+                    return self.wechat_start_entry()
+                if method == 'GET' and u.path == '/api/wechat/callback':
+                    return self.wechat_callback_entry()
                 path = re.sub(r'^/api/v1(?=/)', '/api', u.path)  # /api/v1/... 作为兼容别名
                 for m, pat, fn in ROUTES:
                     mm = re.fullmatch(pat, path)

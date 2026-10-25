@@ -127,12 +127,14 @@
         <div id="prize-banner" class="prize-banner" aria-label="跑酷抽奖与 Top3 红包（示意/非赌）"></div>
 
         <div id="auth-bar" class="auth-bar">
-          <button type="button" id="btn-wechat-login" class="wechat-btn">设置昵称（演示）</button>
+          <button type="button" id="btn-wechat-login" class="wechat-btn">微信登录</button>
+          <button type="button" id="btn-guest-nick" class="linkish">游客昵称</button>
           <div id="auth-profile" class="auth-profile hidden">
             <img id="auth-avatar" class="auth-avatar hidden" alt="" width="32" height="32" />
             <span id="auth-nick" class="auth-nick"></span>
             <button type="button" id="btn-logout" class="linkish">退出</button>
           </div>
+          <p id="wx-note" class="wx-note"></p>
         </div>
 
         <ul class="tips">
@@ -185,6 +187,13 @@
           </div>
         </div>
         <p id="lb-mine" class="lb-mine"></p>
+        <div class="lb-panel" id="history-panel" aria-label="我的竖屏记录">
+          <div class="lb-col history-col">
+            <h3>我的竖屏记录</h3>
+            <p id="history-best" class="lb-mine"></p>
+            <ol id="history-list" class="lb-list"></ol>
+          </div>
+        </div>
 
         <button type="button" id="btn-start" class="primary">▶ 开始跑</button>
         <p class="legal-links">
@@ -248,8 +257,8 @@
 
     <div id="login-modal" class="login-modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
       <div class="login-card">
-        <h2 id="login-title">设置昵称（演示）</h2>
-        <p class="login-note">这不是微信登录。昵称会写到本机，并在连上服务器时同步到和大角牛横版<strong>同一个游客账号</strong>（<code>/api/me/nickname</code>）。没有接入微信 OAuth 或支付。</p>
+        <h2 id="login-title">游客昵称</h2>
+        <p class="login-note">这不是微信登录。微信登录请点上面的「微信登录」（需要在微信里打开，并且服务器已配置公众号网页授权）。这里只改游客昵称，会同步到和横版共用的账号。</p>
         <label class="field">
           <span>昵称</span>
           <input id="login-nick" type="text" maxlength="16" placeholder="显示在排行榜" autocomplete="nickname" />

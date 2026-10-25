@@ -1441,6 +1441,17 @@ html, body {
   z-index: 3;
 }
 
+.wx-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #9a3412;
+}
+
+.history-col {
+  grid-column: 1 / -1;
+}
+
 .wallet-line {
   margin: 0 0 10px;
   font-size: 13px;

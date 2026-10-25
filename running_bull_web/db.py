@@ -60,6 +60,38 @@ class DB:
             self.conn.executescript(_sqlite_schema())
             self.conn.commit()
             self.where = path
+        self.migrate()
+
+    def _column_names(self, table):
+        if not re.fullmatch(r'[A-Za-z0-9_]+', table):
+            raise ValueError('bad table')
+        if self.kind == 'sqlite':
+            return {r['name'] for r in self.all('PRAGMA table_info(%s)' % table)}
+        rows = self.all(
+            'SELECT COLUMN_NAME AS name FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            (table,))
+        return {r['name'] for r in rows}
+
+    def ensure_column(self, table, column, definition):
+        """给已经建好的表补列。新库的 CREATE TABLE 里已经有这些列时会直接跳过。"""
+        if not re.fullmatch(r'[A-Za-z0-9_]+', table) or not re.fullmatch(r'[A-Za-z0-9_]+', column):
+            raise ValueError('bad identifier')
+        if column in self._column_names(table):
+            return
+        self.execute('ALTER TABLE %s ADD COLUMN %s %s' % (table, column, definition))
+
+    def migrate(self):
+        # 旧库只有 CREATE TABLE IF NOT EXISTS，不会自己长出新列。这里按列补。
+        for col, ddl in (
+            ('board', "VARCHAR(16) NOT NULL DEFAULT ''"),
+            ('mode', "VARCHAR(16) NOT NULL DEFAULT ''"),
+            ('hero', "VARCHAR(16) NOT NULL DEFAULT ''"),
+            ('distance', 'INT NOT NULL DEFAULT 0'),
+            ('play_ms', 'INT NOT NULL DEFAULT 0'),
+            ('wx_openid', "VARCHAR(64) NOT NULL DEFAULT ''"),
+        ):
+            self.ensure_column('runs', col, ddl)
+        self.commit()
 
     def _connect(self):
         import pymysql
