@@ -73,10 +73,100 @@
   }
 
   const dev = loadDeviceId();
+  const LS_CAREER = "rb_portrait_career_v1";
   let serverUser = null;
   let active = null;
   let seq = 0;
   let pendingNick = "";
+  let shopBusy = false;
+  let careerServer = { score: 0, coins: 0, distance: 0 };
+  let careerUnsynced = { score: 0, coins: 0, distance: 0 };
+  let careerOptimistic = null;
+
+  function zeroTotals() {
+    return { score: 0, coins: 0, distance: 0 };
+  }
+
+  function readTotals(raw) {
+    raw = raw || {};
+    return {
+      score: Math.max(0, Math.floor(Number(raw.score) || 0)),
+      coins: Math.max(0, Math.floor(Number(raw.coins) || 0)),
+      distance: Math.max(0, Math.floor(Number(raw.distance) || 0)),
+    };
+  }
+
+  function loadCareerCache() {
+    try {
+      const o = JSON.parse(localStorage.getItem(LS_CAREER) || "null");
+      if (!o) return;
+      careerServer = readTotals(o.server);
+      careerUnsynced = readTotals(o.unsynced);
+    } catch (e) {}
+  }
+
+  function saveCareerCache() {
+    try {
+      localStorage.setItem(LS_CAREER, JSON.stringify({
+        server: careerServer,
+        unsynced: careerUnsynced,
+      }));
+    } catch (e) {}
+  }
+
+  function shownCareer() {
+    const extra = careerOptimistic || zeroTotals();
+    return {
+      score: careerServer.score + careerUnsynced.score + extra.score,
+      coins: careerServer.coins + careerUnsynced.coins + extra.coins,
+      distance: careerServer.distance + careerUnsynced.distance + extra.distance,
+    };
+  }
+
+  function paintCareer() {
+    const t = shownCareer();
+    document.querySelectorAll("[data-career]").forEach(function (el) {
+      const key = el.getAttribute("data-career");
+      if (key === "score" || key === "coins" || key === "distance") {
+        el.textContent = String(t[key]);
+      }
+    });
+  }
+
+  function setServerTotals(raw) {
+    if (!raw) return;
+    careerServer = readTotals(raw);
+    saveCareerCache();
+    paintCareer();
+  }
+
+  function armOptimistic(info) {
+    careerOptimistic = readTotals(info);
+    paintCareer();
+  }
+
+  function paintPowers() {
+    const powers = (serverUser && serverUser.portrait_powers) || { bomb: 0, invuln: 0, boost: 0 };
+    const coins = serverUser ? Number(serverUser.coins) || 0 : 0;
+    document.querySelectorAll("[data-power]").forEach(function (el) {
+      const id = el.getAttribute("data-power");
+      el.textContent = "×" + (powers[id] || 0);
+    });
+    document.querySelectorAll("[data-shop-buy], [data-shop-use]").forEach(function (btn) {
+      const id = btn.getAttribute("data-shop-use") || btn.getAttribute("data-shop-buy");
+      const price = Number(btn.getAttribute("data-price") || 0);
+      const owned = powers[id] || 0;
+      const useBtn = btn.hasAttribute("data-shop-use");
+      const label = btn.querySelector(".use-label");
+      btn.classList.toggle("owned", owned > 0);
+      if (label) label.textContent = owned > 0 ? "×" + owned : String(price);
+      const can = useBtn ? owned > 0 || coins >= price : coins >= price;
+      btn.classList.toggle("broke", !!(serverUser && !can));
+      btn.disabled = shopBusy;
+    });
+    const wallet = document.getElementById("shop-wallet");
+    if (wallet) wallet.textContent = serverUser ? "钱包 " + serverUser.coins : "钱包未连接";
+  }
 
   function call(method, path, body) {
     return fetch(BASE + path, {
@@ -129,6 +219,29 @@
       .catch(function () {});
   }
 
+  function absorbFinishTotals(r) {
+    const totals = (r && (r.portrait_totals || (r.user && r.user.portrait_totals))) || null;
+    if (totals) {
+      careerOptimistic = null;
+      setServerTotals(totals);
+    } else {
+      keepUnsyncedFinish();
+    }
+    paintPowers();
+  }
+
+  function keepUnsyncedFinish() {
+    if (!careerOptimistic) return;
+    careerUnsynced = {
+      score: careerUnsynced.score + careerOptimistic.score,
+      coins: careerUnsynced.coins + careerOptimistic.coins,
+      distance: careerUnsynced.distance + careerOptimistic.distance,
+    };
+    careerOptimistic = null;
+    saveCareerCache();
+    paintCareer();
+  }
+
   function finishRun(run, info) {
     if (!run || !run.id || run.done) return;
     run.done = true;
@@ -145,6 +258,7 @@
       .then((r) => {
         serverUser = r.user;
         applyUser(r.user);
+        absorbFinishTotals(r);
         paintWallet();
         const note = document.getElementById("over-sync");
         if (!note || active !== run) return;
@@ -155,6 +269,7 @@
         loadHistory();
       })
       .catch(() => {
+        keepUnsyncedFinish();
         const note = document.getElementById("over-sync");
         if (note) note.textContent = "这次没连上服务器，金币只记在本机排行";
       });
@@ -183,6 +298,8 @@
         if (r.user) {
           serverUser = r.user;
           applyUser(r.user);
+          if (r.user.portrait_totals) setServerTotals(r.user.portrait_totals);
+          paintPowers();
           paintWallet();
         }
         if (mine.pending) finishRun(mine, mine.pending);
@@ -193,12 +310,56 @@
   window.__RB_ON_FINISH = function (info) {
     const run = active;
     if (!run || run.done) return;
+    armOptimistic(info);
     if (!run.id) {
       run.pending = info;
       return;
     }
     finishRun(run, info);
   };
+
+  function buyPower(item) {
+    if (!serverUser) return Promise.reject(new Error("连上服务器后才能用钱包金币购买"));
+    if (shopBusy) return Promise.reject(new Error("正在处理"));
+    shopBusy = true;
+    paintPowers();
+    return call("POST", "/portrait/shop", { item: item, qty: 1 })
+      .then(function (r) {
+        serverUser = r.user;
+        applyUser(r.user);
+        if (r.user && r.user.portrait_totals) setServerTotals(r.user.portrait_totals);
+        paintWallet("已购买");
+        return r;
+      })
+      .finally(function () {
+        shopBusy = false;
+        paintPowers();
+      });
+  }
+
+  function usePower(item) {
+    const run = active;
+    if (!serverUser) return Promise.reject(new Error("连上服务器后才能扣金币"));
+    if (!run || run.done) return Promise.reject(new Error("开局后才能使用"));
+    if (!run.id) return Promise.reject(new Error("正在连接本局，稍后再点"));
+    if (shopBusy) return Promise.reject(new Error("正在处理"));
+    shopBusy = true;
+    paintPowers();
+    return call("POST", "/runs/" + run.id + "/power", { item: item })
+      .then(function (r) {
+        serverUser = r.user;
+        if (r.user && r.user.portrait_totals) setServerTotals(r.user.portrait_totals);
+        paintWallet();
+        return r;
+      })
+      .finally(function () {
+        shopBusy = false;
+        paintPowers();
+      });
+  }
+
+  window.__RB_BUY_POWER = buyPower;
+  window.__RB_USE_POWER = usePower;
 
   window.__RB_ON_NICK = function (user) {
     if (!user || !user.nickname) return;
@@ -212,6 +373,7 @@
     const runs = ((data && data.runs) || []).filter(function (r) {
       return (r.score || 0) > 0 || (r.coins || 0) > 0;
     });
+    if (data && data.portrait_totals) setServerTotals(data.portrait_totals);
     if (best) best.textContent = data && data.best ? "竖屏最高 " + data.best : "还没有竖屏记录";
     if (!list) return;
     if (!runs.length) {
@@ -232,6 +394,8 @@
     serverUser = user;
     if (pendingNick && pendingNick !== (user && user.nickname)) pushNick();
     else applyUser(user);
+    if (user && user.portrait_totals) setServerTotals(user.portrait_totals);
+    paintPowers();
     paintWallet(extra || "");
     loadHistory();
   }
@@ -246,6 +410,10 @@
 
   const wechatBtn = document.getElementById("btn-wechat-login");
   if (wechatBtn) wechatBtn.classList.add("hidden");
+
+  loadCareerCache();
+  paintCareer();
+  paintPowers();
 
   call("POST", "/guest", { device_id: dev, invite_code: invite, client_hint: clientHint() })
     .then(function (r) {

@@ -88,6 +88,43 @@ def add_item(uid, item, qty):
         db.execute('INSERT INTO inventory (user_id, item_id, qty) VALUES (?,?,?)', (uid, item, qty))
 
 
+# 竖屏局内道具。不放进 CATALOG，横版商店不会列出。价格以服务端为准。
+# 背包键加 p_ 前缀，避免和护盾 / 双倍金币的 inventory 行撞车。
+PORTRAIT_POWERS = {
+    'bomb': {'price': 300, 'name': '炸弹'},
+    'invuln': {'price': 500, 'name': '无敌'},
+    'boost': {'price': 500, 'name': '加速'},
+}
+PORTRAIT_POWER_MAX = 30
+
+
+def portrait_powers_from(items):
+    return {k: max(0, int(items.get('p_' + k, 0) or 0)) for k in PORTRAIT_POWERS}
+
+
+def career_totals(uid, board='portrait'):
+    """已结算对局的生涯累计。总金币是各局入账金币之和，不是扣过道具后的钱包余额。"""
+    if board == 'all':
+        row = db.one(
+            'SELECT COALESCE(SUM(score),0) AS score, COALESCE(SUM(coins),0) AS coins, COALESCE(SUM(distance),0) AS distance, COUNT(*) AS n FROM runs WHERE user_id = ? AND finished = 1',
+            (uid,))
+    else:
+        row = db.one(
+            'SELECT COALESCE(SUM(score),0) AS score, COALESCE(SUM(coins),0) AS coins, COALESCE(SUM(distance),0) AS distance, COUNT(*) AS n FROM runs WHERE user_id = ? AND finished = 1 AND board = ?',
+            (uid, board))
+    row = row or {}
+    return {
+        'score': int(row.get('score') or 0),
+        'coins': int(row.get('coins') or 0),
+        'distance': int(row.get('distance') or 0),
+        'runs': int(row.get('n') or 0),
+    }
+
+
+def portrait_shop_view():
+    return [{'id': k, 'name': v['name'], 'price': v['price']} for k, v in PORTRAIT_POWERS.items()]
+
+
 def user_view(u):
     items = inv(u['id'])
     stats = db.one('SELECT COUNT(*) AS n, COALESCE(SUM(reward),0) AS s FROM invites WHERE inviter_id = ?', (u['id'],))
@@ -99,6 +136,9 @@ def user_view(u):
         'consumables': {c['id']: items.get(c['id'], 0) for c in CATALOG['consumables']},
         'invited_count': int(stats['n']), 'invite_earned': int(stats['s']),
         'wechat': bool(wx), 'avatar': (wx or {}).get('avatar') or '',
+        'portrait_powers': portrait_powers_from(items),
+        'portrait_totals': career_totals(u['id'], 'portrait'),
+        'portrait_shop': portrait_shop_view(),
     }
 
 
@@ -221,6 +261,58 @@ def api_equip(h, body):
     return {'user': user_view(get_user(u['device_id']))}
 
 
+def api_portrait_shop(h, body):
+    """把竖屏道具买进背包。只扣钱包，不在这里生效。"""
+    u = h.user()
+    item = str(body.get('item') or '')
+    if item not in PORTRAIT_POWERS:
+        raise ApiError(404, '没有这个道具')
+    raw_qty = body.get('qty', 1)
+    if raw_qty in (None, ''):
+        raw_qty = 1
+    try:
+        qty = int(raw_qty)
+    except (TypeError, ValueError):
+        raise ApiError(400, '数量不对')
+    if qty < 1 or qty > 20:
+        raise ApiError(400, '一次最多买 20 个')
+    have = int(inv(u['id']).get('p_' + item, 0) or 0)
+    if have + qty > PORTRAIT_POWER_MAX:
+        raise ApiError(409, '这种道具最多持有 %d 个' % PORTRAIT_POWER_MAX)
+    cost = PORTRAIT_POWERS[item]['price'] * qty
+    if int(u['coins']) < cost:
+        raise ApiError(402, '金币不够')
+    add_coins(u['id'], -cost, 'pbuy_' + item)
+    add_item(u['id'], 'p_' + item, qty)
+    db.commit()
+    fresh = get_user(u['device_id'])
+    return {'user': user_view(fresh), 'item': item, 'qty': qty, 'cost': cost}
+
+
+def api_portrait_power(h, body, rid):
+    """本局使用一个竖屏道具。背包有存货就扣存货，否则按标价扣钱包。效果由客户端在成功后续上。"""
+    u = h.user()
+    get_run(u, rid)
+    item = str(body.get('item') or '')
+    if item not in PORTRAIT_POWERS:
+        raise ApiError(404, '没有这个道具')
+    key = 'p_' + item
+    have = int(inv(u['id']).get(key, 0) or 0)
+    paid = 0
+    if have > 0:
+        add_item(u['id'], key, -1)
+    else:
+        cost = PORTRAIT_POWERS[item]['price']
+        fresh_coins = int(db.one('SELECT coins FROM users WHERE id = ?', (u['id'],))['coins'])
+        if fresh_coins < cost:
+            raise ApiError(402, '金币不够')
+        add_coins(u['id'], -cost, 'puse_' + item)
+        paid = cost
+    db.commit()
+    fresh = get_user(u['device_id'])
+    return {'ok': True, 'item': item, 'paid': paid, 'user': user_view(fresh)}
+
+
 def api_run_start(h, body):
     u = h.user()
     have = user_view(u)['consumables']
@@ -313,9 +405,11 @@ def api_finish(h, body, rid):
     fresh = get_user(u['device_id'])
     rank = db.one('SELECT COUNT(*) AS n FROM users WHERE best > ?', (max(score, fresh['best']),))['n'] + 1
     best_row = db.one("SELECT MAX(score) AS b FROM runs WHERE user_id = ? AND board = 'portrait' AND finished = 1", (u['id'],))
+    view = user_view(fresh)
     return {'score': score, 'earned': earned, 'capped': capped, 'new_record': new_record, 'rank': rank,
             'board': 'portrait' if portrait else 'landscape', 'distance': distance, 'play_ms': play_ms,
-            'portrait_best': int((best_row or {}).get('b') or 0), 'user': user_view(fresh)}
+            'portrait_best': int((best_row or {}).get('b') or 0),
+            'portrait_totals': view['portrait_totals'], 'user': view}
 
 
 def api_history(h, body):
@@ -341,7 +435,9 @@ def api_history(h, body):
         return int((row or {}).get('b') or 0)
     portrait_best = board_best('portrait')
     shown = portrait_best if board in ('portrait', 'all') else board_best(board)
-    return {'board': board, 'best': shown, 'portrait_best': portrait_best, 'runs': rows}
+    portrait_totals = career_totals(u['id'], 'portrait')
+    return {'board': board, 'best': shown, 'portrait_best': portrait_best,
+            'portrait_totals': portrait_totals, 'runs': rows}
 
 
 def api_topup(h, body):
@@ -795,9 +891,11 @@ ROUTES = [
     ('POST', r'/api/me/nickname', api_nickname),
     ('POST', r'/api/me/equip', api_equip),
     ('POST', r'/api/shop/buy', api_buy),
+    ('POST', r'/api/portrait/shop', api_portrait_shop),
     ('POST', r'/api/runs', api_run_start),
     ('POST', r'/api/ads', api_ad_start),
     ('POST', r'/api/runs/(\w+)/revive', api_revive),
+    ('POST', r'/api/runs/(\w+)/power', api_portrait_power),
     ('POST', r'/api/runs/(\w+)/finish', api_finish),
     ('GET', r'/api/history', api_history),
     ('GET', r'/api/wechat/config', api_wechat_config),
