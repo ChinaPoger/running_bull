@@ -279,7 +279,7 @@ def example_reject_non_json_content_type():
     did = new_dev()
     raw = json.dumps({'device_id': did, 'nickname': 'plain'}).encode('utf-8')
     code, data = call('POST', '/guest', raw=raw, content_type='text/plain')
-    assert code in (400, 415), (code, data)
+    assert code in (400, 415), code
     absent(did)
 
 
@@ -650,22 +650,34 @@ def example_leaderboard_edges():
         code, data = call('GET', '/portrait/leaderboard?metric=' + quote(bad, safe=''), dev=a, expect=400)
         assert code == 400
 
-    score = must('GET', '/portrait/leaderboard?metric=SCORE&limit=20', dev=a)
+    def named(board, name):
+        rows = [row for row in board['top'] if row['nickname'] == name]
+        assert len(rows) == 1, (name, [row['nickname'] for row in board['top']])
+        return rows[0]
+
+    # 同一份临时库里前面的例子也有成绩，所以只核对这几个号的相对名次。
+    score = must('GET', '/portrait/leaderboard?metric=SCORE&limit=50', dev=a)
     assert score['metric'] == 'score'
-    assert [row['nickname'] for row in score['top'][:2]] == ['甲牛', '乙牛']
-    assert score['top'][0]['value'] == 31 and score['me']['rank'] == 1
+    jia = named(score, '甲牛')
+    yi = named(score, '乙牛')
+    quote_row = named(score, nick)
+    assert jia['value'] == 31 and yi['value'] == 10 and quote_row['value'] == 5
+    assert jia['rank'] < yi['rank'] < quote_row['rank']
+    assert score['me']['value'] == 31 and score['me']['rank'] == jia['rank']
     for i, row in enumerate(score['top']):
         assert row['rank'] == i + 1 and row['value'] >= 0 and isinstance(row['nickname'], str)
+    values = [row['value'] for row in score['top']]
+    assert values == sorted(values, reverse=True)
     assert all(row['nickname'] != '丙牛' and row['nickname'] != '零分' for row in score['top'])
-    assert any(row['nickname'] == nick for row in score['top'])
 
-    dist = must('GET', '/portrait/leaderboard?metric=%20distance%20', dev=b)
+    dist = must('GET', '/portrait/leaderboard?metric=%20distance%20&limit=50', dev=b)
     assert dist['metric'] == 'distance'
-    assert [row['nickname'] for row in dist['top'][:2]] == ['乙牛', '甲牛']
-    assert dist['top'][0]['value'] == 40
+    jia_d = named(dist, '甲牛')
+    yi_d = named(dist, '乙牛')
+    assert yi_d['value'] == 40 and jia_d['value'] == 15 and yi_d['rank'] < jia_d['rank']
 
     one = must('GET', '/portrait/leaderboard?metric=score&limit=1', dev=a)
-    assert len(one['top']) == 1 and one['top'][0]['nickname'] == '甲牛'
+    assert len(one['top']) == 1 and one['top'][0]['value'] >= jia['value']
     for limit in ('0', '-5', '-0'):
         clamped = must('GET', '/portrait/leaderboard?metric=score&limit=' + limit, dev=a)
         assert len(clamped['top']) == 1, limit
