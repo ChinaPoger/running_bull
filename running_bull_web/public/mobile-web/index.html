@@ -127,14 +127,12 @@
         <div id="prize-banner" class="prize-banner" aria-label="跑酷抽奖与 Top3 红包（示意/非赌）"></div>
 
         <div id="auth-bar" class="auth-bar">
-          <button type="button" id="btn-wechat-login" class="wechat-btn">微信登录</button>
-          <button type="button" id="btn-guest-nick" class="linkish">游客昵称</button>
-          <div id="auth-profile" class="auth-profile hidden">
+          <div id="auth-profile" class="auth-profile">
             <img id="auth-avatar" class="auth-avatar hidden" alt="" width="32" height="32" />
-            <span id="auth-nick" class="auth-nick"></span>
-            <button type="button" id="btn-logout" class="linkish">退出</button>
+            <span id="auth-nick" class="auth-nick">本机账号</span>
+            <button type="button" id="btn-guest-nick" class="linkish">改昵称</button>
           </div>
-          <p id="wx-note" class="wx-note"></p>
+          <p id="device-note" class="device-note">同一浏览器会记住金币和成绩。清除本站数据会换成新账号；换一部手机是另一个账号。</p>
         </div>
 
         <ul class="tips">
@@ -257,8 +255,8 @@
 
     <div id="login-modal" class="login-modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
       <div class="login-card">
-        <h2 id="login-title">游客昵称</h2>
-        <p class="login-note">这不是微信登录。微信登录请点上面的「微信登录」（需要在微信里打开，并且服务器已配置公众号网页授权）。这里只改游客昵称，会同步到和横版共用的账号。</p>
+        <h2 id="login-title">改昵称</h2>
+        <p class="login-note">身份是这台浏览器里的设备号，改昵称不会换账号。昵称会同步到和横版共用的钱包。</p>
         <label class="field">
           <span>昵称</span>
           <input id="login-nick" type="text" maxlength="16" placeholder="显示在排行榜" autocomplete="nickname" />
@@ -267,7 +265,7 @@
           <span>头像 URL（可选）</span>
           <input id="login-avatar" type="url" maxlength="300" placeholder="https://..." inputmode="url" />
         </label>
-        <button type="button" id="btn-login-confirm" class="primary wechat-confirm">保存昵称</button>
+        <button type="button" id="btn-login-confirm" class="primary">保存昵称</button>
         <button type="button" id="btn-login-guest" class="ghost">随机游客昵称</button>
         <button type="button" id="btn-login-cancel" class="ghost">取消</button>
         <p class="login-foot">头像 URL 只存在这台设备上，不会上传。</p>
@@ -292,7 +290,7 @@
       note: "Display only. Rewarded hit ads stay on window.__RB_REWARDED_AD (mock)."
     };
   </script>
-  <script src="game.js?v=portrait1"></script>
-  <script src="sync.js?v=portrait1"></script>
+  <script src="game.js?v=device1"></script>
+  <script src="sync.js?v=device1"></script>
 </body>
 </html>

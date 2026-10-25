@@ -91,6 +91,8 @@ class DB:
             ('wx_openid', "VARCHAR(64) NOT NULL DEFAULT ''"),
         ):
             self.ensure_column('runs', col, ddl)
+        # 软指纹只作旁路记录，不建索引，也不用来查账号。
+        self.ensure_column('users', 'client_hint', "VARCHAR(64) NOT NULL DEFAULT ''")
         self.commit()
 
     def _connect(self):

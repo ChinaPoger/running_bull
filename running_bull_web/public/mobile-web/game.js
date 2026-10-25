@@ -46,7 +46,6 @@
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   const authBar = document.getElementById("auth-bar");
   const btnWechat = document.getElementById("btn-wechat-login");
-  const btnLogout = document.getElementById("btn-logout");
   const authProfile = document.getElementById("auth-profile");
   const authNick = document.getElementById("auth-nick");
   const authAvatar = document.getElementById("auth-avatar");
@@ -511,11 +510,7 @@
     };
   });
 
-  // --- Identity / leaderboard (Pages: localStorage; plug real WeChat later) ---
-  function uid() {
-    return "m_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-  }
-
+  // --- Identity / leaderboard. The account key is rb_device (see sync.js). ---
   function loadUser() {
     try {
       const raw = localStorage.getItem(LS_USER);
@@ -533,16 +528,6 @@
     if (u) localStorage.setItem(LS_USER, JSON.stringify(u));
     else localStorage.removeItem(LS_USER);
     renderAuth();
-  }
-
-  /** 微信内跳到公众号网页授权。没接上时 sync.js 会说明原因，这里不再假装登录。 */
-  function beginWeChatLogin() {
-    if (typeof window.__RB_WECHAT_OAUTH === "function") {
-      window.__RB_WECHAT_OAUTH();
-      return;
-    }
-    const note = document.getElementById("wx-note");
-    if (note) note.textContent = "微信登录还没接上。可以先游客试玩。";
   }
 
   function openLoginModal() {
@@ -568,29 +553,15 @@
       avatar = "";
     }
     const prev = currentUser;
-    const id = prev && prev.provider === "mock" ? prev.id : uid();
-    try {
-      localStorage.removeItem("rb_mobile_logged_out");
-    } catch (e) {}
     saveUser({
-      id,
-      openid: id,
+      id: (prev && prev.id) || "device_local",
       nickname: nick.slice(0, 16),
       avatar: avatar.slice(0, 300),
-      provider: "mock",
+      provider: "device",
       boundWeChat: false,
     });
     if (typeof window.__RB_ON_NICK === "function") window.__RB_ON_NICK(currentUser);
     closeLoginModal();
-    renderLeaderboards();
-  }
-
-  function logout() {
-    saveUser(null);
-    try {
-      localStorage.setItem("rb_mobile_logged_out", "1");
-    } catch (e) {}
-    if (typeof window.__RB_WECHAT_LOGOUT === "function") window.__RB_WECHAT_LOGOUT();
     renderLeaderboards();
   }
 
@@ -864,8 +835,8 @@
         lbMineEl.classList.remove("hidden");
       } else {
         lbMineEl.textContent = chill
-          ? "登录后记录你的存活时长积分"
-          : "登录后记录你的得分与游玩时长";
+          ? "本机账号会记下存活时长积分"
+          : "本机账号会记下得分与游玩时长";
         lbMineEl.classList.remove("hidden");
       }
     }
@@ -883,22 +854,17 @@
 
   function renderAuth() {
     if (!authBar) return;
-    if (currentUser) {
-      if (btnWechat) btnWechat.classList.add("hidden");
-      if (authProfile) authProfile.classList.remove("hidden");
-      if (authNick) authNick.textContent = currentUser.nickname;
-      if (authAvatar) {
-        if (currentUser.avatar) {
-          authAvatar.src = currentUser.avatar;
-          authAvatar.classList.remove("hidden");
-        } else {
-          authAvatar.removeAttribute("src");
-          authAvatar.classList.add("hidden");
-        }
+    if (btnWechat) btnWechat.classList.add("hidden");
+    if (authProfile) authProfile.classList.remove("hidden");
+    if (authNick) authNick.textContent = (currentUser && currentUser.nickname) || "本机账号";
+    if (authAvatar) {
+      if (currentUser && currentUser.avatar) {
+        authAvatar.src = currentUser.avatar;
+        authAvatar.classList.remove("hidden");
+      } else {
+        authAvatar.removeAttribute("src");
+        authAvatar.classList.add("hidden");
       }
-    } else {
-      if (btnWechat) btnWechat.classList.remove("hidden");
-      if (authProfile) authProfile.classList.add("hidden");
     }
   }
 
@@ -911,8 +877,8 @@
   };
   window.__RB_AUTH = {
     getUser: () => currentUser,
-    loginMock: beginWeChatLogin,
-    logout,
+    loginMock: openLoginModal,
+    logout: function () {},
   };
 
   function setMode(next) {
@@ -5280,10 +5246,9 @@
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", () => setTimeout(resize, 120));
 
-  if (btnWechat) btnWechat.addEventListener("click", beginWeChatLogin);
+  if (btnWechat) btnWechat.classList.add("hidden");
   const btnGuestNick = document.getElementById("btn-guest-nick");
   if (btnGuestNick) btnGuestNick.addEventListener("click", openLoginModal);
-  if (btnLogout) btnLogout.addEventListener("click", logout);
   if (btnLoginConfirm) {
     btnLoginConfirm.addEventListener("click", () => confirmMockLogin(false));
   }
@@ -5313,16 +5278,13 @@
 
   window.__RB_APPLY_SERVER_USER = function (u) {
     if (!u || !u.nickname) return;
-    try {
-      if (localStorage.getItem("rb_mobile_logged_out") === "1") return;
-    } catch (e) {}
-    if (currentUser && !u.wechat) return;
+    const prev = currentUser;
     saveUser({
-      id: u.wechat ? "wx_" + u.id : "srv_" + u.id,
+      id: "dev_" + u.id,
       nickname: String(u.nickname).slice(0, 16),
-      avatar: String(u.avatar || "").slice(0, 300),
-      provider: u.wechat ? "wechat" : "server",
-      boundWeChat: !!u.wechat,
+      avatar: (prev && prev.avatar) || "",
+      provider: "device",
+      boundWeChat: false,
     });
     renderLeaderboards();
   };

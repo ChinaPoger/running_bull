@@ -3,7 +3,8 @@
 
 启动：python3 server.py            （默认 http://0.0.0.0:3000 ，SQLite；接口前缀 /api）
 环境变量：PORT、HOST、PUBLIC_URL（邀请链接网址，默认 https://bull.lingecho.com）、DB_URL / DB_HOST...（见 db.py）、TRUST_PROXY=1（在 nginx 后面时读取 X-Forwarded-For）
-微信登录（可选）：WECHAT_APP_ID、WECHAT_APP_SECRET、WECHAT_REDIRECT_URI、WECHAT_OAUTH_SCOPE（默认 snsapi_userinfo）。不配置就能跑，只是微信登录不可用。
+竖屏身份是设备号（X-Device-Id），打开页面即 POST /api/guest，不靠微信。
+微信公众号网页授权仍可配 WECHAT_APP_ID、WECHAT_APP_SECRET、WECHAT_REDIRECT_URI、WECHAT_OAUTH_SCOPE（默认 snsapi_userinfo），不配置时相关接口关闭，页面上也不提供入口。
 """
 import json, os, re, secrets, string, time, mimetypes, hashlib, hmac, threading, urllib.request, urllib.error
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -109,10 +110,28 @@ def get_user(dev):
 
 
 # ---------------- 接口实现 ----------------
+def clean_client_hint(raw):
+    """UA + 屏幕等做成的短哈希。格式不对就丢掉。绝不拿它当账号键。"""
+    hint = str(raw or '').strip()[:64]
+    if hint and re.fullmatch(r'[A-Za-z0-9_-]{1,64}', hint):
+        return hint
+    return ''
+
+
+def remember_hint(u, hint):
+    if not u or not hint or (u.get('client_hint') or '') == hint:
+        return u
+    db.execute('UPDATE users SET client_hint = ? WHERE id = ?', (hint, u['id']))
+    db.commit()
+    return db.one('SELECT * FROM users WHERE id = ?', (u['id'],))
+
+
 def api_guest(h, body):
     dev = str(body.get('device_id') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9_-]{8,64}', dev):
         raise ApiError(400, 'device_id 需要 8-64 位字母数字')
+    # client_hint 只写在这一行上，查找永远用 device_id。
+    hint = clean_client_hint(body.get('client_hint'))
     u = db.one('SELECT * FROM users WHERE device_id = ?', (dev,))
     result = {'created': False, 'invite': None}
     if not u:
@@ -128,6 +147,7 @@ def api_guest(h, body):
         result['invite'] = try_invite(h, u, str(body.get('invite_code') or '').strip().upper())
         db.commit()
         u = db.one('SELECT * FROM users WHERE id = ?', (u['id'],))
+    u = remember_hint(u, hint)
     result['user'] = user_view(u)
     return result
 
@@ -847,21 +867,22 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def user(self):
-        # 显式 X-Session（XBuilder / 昵称 PIN）优先。其次是微信回调种下的 cookie。
-        # cookie 失效时退回设备号，避免一张过期 cookie 把游客也锁在外面。
+        # 显式会话（XBuilder 的 X-Session，或 body/query 里的 token）优先。
+        # 网页请求带了设备号时，设备号就是账号。微信回调留下的 rb_session
+        # 只在请求里没有设备号时才认，避免一张旧 cookie 盖过本机账号。
         tok = self.headers.get('X-Session') or ''
         if tok:
             return session_user(tok)
-        cok = self.session_from_cookie()
-        if cok:
-            try:
-                return session_user(cok)
-            except ApiError:
-                pass
         tok = str(self._body.get('token') or '') or self._qs.get('token', [''])[0]
         if tok:
             return session_user(tok)
-        return get_user(self.headers.get('X-Device-Id') or self._body.get('device_id') or self._qs.get('device_id', [''])[0])
+        dev = self.headers.get('X-Device-Id') or self._body.get('device_id') or self._qs.get('device_id', [''])[0]
+        if dev:
+            return get_user(dev)
+        cok = self.session_from_cookie()
+        if cok:
+            return session_user(cok)
+        return get_user('')
 
     def send_json(self, status, obj):
         data = json.dumps(obj, ensure_ascii=False).encode('utf-8')

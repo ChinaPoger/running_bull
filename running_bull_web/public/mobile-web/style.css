@@ -658,10 +658,11 @@ html, body {
 
 .auth-bar {
   margin: 0 0 14px;
-  min-height: 40px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
 }
 
 .wechat-btn {
@@ -1441,11 +1442,13 @@ html, body {
   z-index: 3;
 }
 
-.wx-note {
-  margin: 8px 0 0;
+.wx-note,
+.device-note {
+  margin: 6px 0 0;
+  max-width: 36em;
   font-size: 12px;
   line-height: 1.45;
-  color: #9a3412;
+  color: #64748b;
 }
 
 .history-col {
